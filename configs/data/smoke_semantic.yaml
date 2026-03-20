@@ -1,0 +1,8 @@
+train_sets:
+  - local_path: data/smoke/pairs.jsonl
+    format: pair
+    split: train
+eval_sets:
+  - local_path: data/smoke/sts.jsonl
+    format: scored_pair
+    split: validation

@@ -1,0 +1,4 @@
+{"anchor":"a happy dog","positive":"a joyful dog","task":"semantic_similarity","source":"smoke-pair"}
+{"anchor":"a fast car","positive":"a quick automobile","task":"semantic_similarity","source":"smoke-pair"}
+{"anchor":"an apple a day","positive":"daily fruit can help","task":"semantic_similarity","source":"smoke-pair"}
+{"anchor":"ocean waves","positive":"sea surf","task":"semantic_similarity","source":"smoke-pair"}
