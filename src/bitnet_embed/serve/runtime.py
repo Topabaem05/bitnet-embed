@@ -8,6 +8,7 @@ import torch
 from bitnet_embed.modeling.model import EncodeConfig
 from bitnet_embed.serve.config import ServiceConfig
 from bitnet_embed.serve.schemas import EmbeddingData, EmbeddingRequest, EmbeddingResponse, UsageInfo
+from bitnet_embed.train.factory import load_model_checkpoint
 
 
 class EncodableModel(Protocol):
@@ -42,8 +43,14 @@ class EmbeddingRuntime:
         inputs = request.to_inputs()
         encode_config = EncodeConfig(
             task=request.task,
-            normalize=request.normalize,
-            truncate_dim=request.truncate_dim,
+            normalize=request.normalize
+            if request.normalize is not None
+            else self.normalize_default,
+            truncate_dim=(
+                request.truncate_dim
+                if request.truncate_dim is not None
+                else self.truncate_dim_default
+            ),
         )
         embeddings = self.model.encode(inputs, encode_config)
         data = [
@@ -60,6 +67,16 @@ class EmbeddingRuntime:
 
 def build_default_runtime(config: ServiceConfig | None = None) -> EmbeddingRuntime:
     service_config = config or ServiceConfig()
+    if service_config.backend == "checkpoint":
+        if service_config.checkpoint_dir is None:
+            raise RuntimeError("checkpoint_dir is required when backend=checkpoint")
+        model = load_model_checkpoint(service_config.checkpoint_dir)
+        return EmbeddingRuntime(
+            model=model,
+            model_name=service_config.model_name,
+            normalize_default=service_config.normalize_default,
+            truncate_dim_default=service_config.truncate_dim_default,
+        )
     return EmbeddingRuntime(
         model=DeterministicEmbeddingBackend(dimension=service_config.truncate_dim_default),
         model_name=service_config.model_name,

@@ -15,6 +15,7 @@ class ServiceConfig:
     truncate_dim_default: int = 768
     backend: str = "deterministic"
     openapi_path: str = "docs/openapi.json"
+    checkpoint_dir: str | None = None
 
 
 def load_service_config(path: str | Path) -> ServiceConfig:
@@ -27,4 +28,7 @@ def load_service_config(path: str | Path) -> ServiceConfig:
         truncate_dim_default=int(payload.get("truncate_dim_default", 768)),
         backend=str(payload.get("backend", "deterministic")),
         openapi_path=str(payload.get("openapi_path", "docs/openapi.json")),
+        checkpoint_dir=(
+            str(payload["checkpoint_dir"]) if payload.get("checkpoint_dir") is not None else None
+        ),
     )

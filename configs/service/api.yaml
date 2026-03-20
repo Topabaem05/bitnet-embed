@@ -5,3 +5,4 @@ normalize_default: true
 truncate_dim_default: 768
 backend: deterministic
 openapi_path: docs/openapi.json
+checkpoint_dir: null
