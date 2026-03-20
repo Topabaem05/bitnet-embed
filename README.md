@@ -50,6 +50,10 @@ uv run python scripts/run_api.py --config configs/service/api.yaml
 - `scripts/compare_reports.py`: compare one or more bundled report outputs into a compact comparison artifact
 - `scripts/benchmark_memory.py`: generate RSS/CUDA memory benchmarks for the current runtime configuration
 
+## Phase 2
+
+- `scripts/phase2_feasibility.py`: emit a readiness report for the future `bitnet.cpp` low-bit runtime path
+
 ## Notes
 
 - The first milestone keeps BitNet quality validation separate from any future `bitnet.cpp` efficiency track.
