@@ -18,6 +18,11 @@
 
 - `sts_spearman`: `-0.3999999999999999`
 
+## Clustering
+
+- `ari`: `1.0`
+- `nmi`: `1.0`
+
 ## Memory
 
 - `peak_cuda_mb`: `0.0`

@@ -55,6 +55,13 @@ def build_report_markdown(bundle: dict[str, Any]) -> str:
         for key, value in sts.items():
             lines.append(f"- `{key}`: `{value}`")
         lines.append("")
+    clustering = bundle.get("clustering", {})
+    if clustering:
+        lines.append("## Clustering")
+        lines.append("")
+        for key, value in clustering.items():
+            lines.append(f"- `{key}`: `{value}`")
+        lines.append("")
     memory = bundle.get("memory", {})
     if memory:
         lines.append("## Memory")
@@ -91,6 +98,9 @@ def run_report_bundle(config_path: str) -> dict[str, Any]:
     ensure_dir(output_dir)
     stage_plan = load_optional_json(str(config["stage_plan"]) if config.get("stage_plan") else None)
     sts = load_optional_json(str(config["sts_report"]) if config.get("sts_report") else None)
+    clustering = load_optional_json(
+        str(config["clustering_report"]) if config.get("clustering_report") else None
+    )
     latency = load_optional_json(
         str(config["latency_report"]) if config.get("latency_report") else None
     )
@@ -105,6 +115,7 @@ def run_report_bundle(config_path: str) -> dict[str, Any]:
         "report_name": report_name,
         "stage_summary": summarize_stages(stage_plan),
         "sts": sts,
+        "clustering": clustering,
         "latency": latency,
         "memory": memory,
         "ann": ann,

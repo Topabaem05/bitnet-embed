@@ -7,6 +7,10 @@
     "ann_recall@1": 0.0,
     "ann_recall@5": 1.0
   },
+  "clustering": {
+    "ari": 1.0,
+    "nmi": 1.0
+  },
   "latency": {
     "p50_latency": 6.495900015579537e-05,
     "p95_latency": 0.00019841700122924522,
