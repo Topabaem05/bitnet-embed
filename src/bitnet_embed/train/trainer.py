@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from bitnet_embed.train.callbacks import RunMetadata
-from bitnet_embed.train.loops import encode_pair_batch, move_batch_to_device
+from bitnet_embed.train.loops import encode_pair_batch, encode_triplet_batch, move_batch_to_device
 from bitnet_embed.train.optim import OptimizerConfig, build_optimizer, build_scheduler
 from bitnet_embed.utils.io import dump_json, ensure_dir, get_git_revision
 from bitnet_embed.utils.metrics import RunningAverage, ThroughputMeter
@@ -34,6 +34,7 @@ class TrainingConfig:
     max_length: int = 256
     run_root: str = "runs"
     seed: int = 42
+    batch_format: str = "pair"
 
 
 @dataclass(slots=True)
@@ -130,8 +131,22 @@ class EmbeddingTrainer:
                 start_time = time.perf_counter()
                 batch = move_batch_to_device(batch, self.accelerator.device)
                 with self.accelerator.accumulate(self.model):
-                    anchor_embeddings, positive_embeddings = encode_pair_batch(self.model, batch)
-                    loss = self.loss_fn(anchor_embeddings, positive_embeddings)
+                    if self.config.batch_format == "pair":
+                        anchor_embeddings, positive_embeddings = encode_pair_batch(
+                            self.model, batch
+                        )
+                        loss = self.loss_fn(anchor_embeddings, positive_embeddings)
+                    elif self.config.batch_format == "triplet":
+                        anchor_embeddings, positive_embeddings, negative_embeddings = (
+                            encode_triplet_batch(self.model, batch)
+                        )
+                        loss = self.loss_fn(
+                            anchor_embeddings,
+                            positive_embeddings,
+                            negative_embeddings,
+                        )
+                    else:
+                        raise ValueError(f"Unsupported batch format: {self.config.batch_format}")
                     self.accelerator.backward(loss)
                     self.optimizer.step()
                     self.scheduler.step()
@@ -162,6 +177,9 @@ class EmbeddingTrainer:
                 config_snapshot=config_snapshot,
             )
             checkpoint_dir = str(checkpoint_path)
+        if eval_fn is not None and not latest_metrics:
+            latest_metrics = eval_fn(self.accelerator.unwrap_model(self.model))
+            dump_json(self.run_dir / "metrics" / "final.json", latest_metrics)
 
         return TrainingSummary(
             global_step=global_step,
