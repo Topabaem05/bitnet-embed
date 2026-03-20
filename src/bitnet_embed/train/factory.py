@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
+
+import torch
 
 from bitnet_embed.modeling.backbone import BackboneConfig, BitNetBackbone
 from bitnet_embed.modeling.lora import LoraConfigSpec, create_peft_lora_config
 from bitnet_embed.modeling.model import BitNetEmbeddingModel
 from bitnet_embed.modeling.smoke import build_toy_embedding_model
+from bitnet_embed.utils.io import load_json
 
 
 def build_model(
@@ -67,3 +71,13 @@ def freeze_backbone(model: BitNetEmbeddingModel) -> None:
 def unfreeze_all(model: BitNetEmbeddingModel) -> None:
     for parameter in model.parameters():
         parameter.requires_grad = True
+
+
+def load_model_checkpoint(checkpoint_dir: str | Path) -> BitNetEmbeddingModel:
+    checkpoint_path = Path(checkpoint_dir)
+    config_snapshot = load_json(checkpoint_path / "config.json")
+    model = build_model(config_snapshot.get("model", {}), config_snapshot.get("lora"))
+    state_dict = torch.load(checkpoint_path / "model.pt", map_location="cpu", weights_only=True)
+    model.load_state_dict(state_dict)
+    model.eval()
+    return model

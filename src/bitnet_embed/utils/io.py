@@ -30,6 +30,10 @@ def dump_json(path: Path | str, payload: Any) -> None:
     destination.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
 
+def load_json(path: Path | str) -> Any:
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
 def get_git_revision(cwd: Path | str | None = None) -> str | None:
     try:
         result = subprocess.run(
