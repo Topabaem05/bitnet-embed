@@ -4,7 +4,7 @@ import argparse
 import json
 from dataclasses import asdict
 
-from common import run_training
+from bitnet_embed.train.workflow import run_training
 
 
 def main() -> None:

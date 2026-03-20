@@ -64,7 +64,6 @@ def build_train_dataset(
     train_sets = data_config.get("train_sets", [])
     if not train_sets:
         raise RuntimeError("At least one training dataset must be configured")
-    all_examples: list[PairExample] | list[TripletExample]
     formats = {str(payload.get("format", "pair")) for payload in train_sets}
     if len(formats) != 1:
         raise RuntimeError(f"Mixed training formats are not supported yet: {sorted(formats)}")
@@ -74,15 +73,13 @@ def build_train_dataset(
         pairs: list[PairExample] = []
         for batch in loaded_examples:
             pairs.extend(item for item in batch if isinstance(item, PairExample))
-        all_examples = pairs
-    elif dataset_format == "triplet":
+        return ExampleDataset(pairs), dataset_format
+    if dataset_format == "triplet":
         triplets: list[TripletExample] = []
         for batch in loaded_examples:
             triplets.extend(item for item in batch if isinstance(item, TripletExample))
         return ExampleDataset(triplets), dataset_format
-    else:
-        raise RuntimeError(f"Unsupported training format: {dataset_format}")
-    return ExampleDataset(all_examples), dataset_format
+    raise RuntimeError(f"Unsupported training format: {dataset_format}")
 
 
 def build_eval_fn(data_config: dict[str, Any]) -> Any:
