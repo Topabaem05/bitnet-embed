@@ -24,6 +24,7 @@ uv run python scripts/run_api.py --config configs/service/api.yaml
 
 - `docs/sdd.md`: in-repo pointer to the source SDD
 - `configs/`: model, data, train, and eval YAML configs
+- `data/smoke/`: local staged smoke datasets for pair, triplet, STS, and retrieval flows
 - `src/bitnet_embed/`: package source
 - `scripts/`: runnable entrypoints for smoke, training, evaluation, and benchmark flows
 - `tests/`: unit and integration smoke tests

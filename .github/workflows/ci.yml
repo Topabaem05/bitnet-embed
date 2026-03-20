@@ -36,5 +36,8 @@ jobs:
       - name: Smoke training
         run: uv run python scripts/train_smoke.py --config configs/train/smoke.yaml
 
+      - name: Retrieval smoke training
+        run: uv run python scripts/train_smoke.py --config configs/train/smoke_retrieval.yaml
+
       - name: Export OpenAPI schema
         run: uv run python scripts/export_openapi.py --config configs/service/api.yaml --output docs/openapi.ci.json
