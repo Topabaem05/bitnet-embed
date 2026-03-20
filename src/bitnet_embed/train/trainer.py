@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from math import ceil
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,7 @@ class TrainingConfig:
     log_every_steps: int = 10
     eval_every_steps: int = 50
     save_every_steps: int = 100
+    max_update_steps: int | None = None
     max_length: int = 256
     run_root: str = "runs"
     seed: int = 42
@@ -71,24 +73,8 @@ class EmbeddingTrainer:
         self.loss_fn = loss_fn
         self.config = config
         self.accelerator = accelerator or build_accelerator(config)
-        self.optimizer = build_optimizer(
-            model,
-            OptimizerConfig(
-                lr=config.lr,
-                weight_decay=config.weight_decay,
-                warmup_ratio=config.warmup_ratio,
-                total_steps=max(1, config.epochs),
-            ),
-        )
-        self.scheduler = build_scheduler(
-            self.optimizer,
-            OptimizerConfig(
-                lr=config.lr,
-                weight_decay=config.weight_decay,
-                warmup_ratio=config.warmup_ratio,
-                total_steps=max(1, config.epochs),
-            ),
-        )
+        self.optimizer: torch.optim.Optimizer | None = None
+        self.scheduler: torch.optim.lr_scheduler.LambdaLR | None = None
         self.run_dir = self._build_run_dir()
         self.metadata = RunMetadata.create(
             experiment_name=config.experiment_name,
@@ -113,12 +99,33 @@ class EmbeddingTrainer:
         eval_fn: Callable[[torch.nn.Module], dict[str, float]] | None = None,
         config_snapshot: dict[str, Any] | None = None,
     ) -> TrainingSummary:
+        total_steps = self._resolve_total_steps(train_dataloader)
+        self.optimizer = build_optimizer(
+            self.model,
+            OptimizerConfig(
+                lr=self.config.lr,
+                weight_decay=self.config.weight_decay,
+                warmup_ratio=self.config.warmup_ratio,
+                total_steps=total_steps,
+            ),
+        )
+        self.scheduler = build_scheduler(
+            self.optimizer,
+            OptimizerConfig(
+                lr=self.config.lr,
+                weight_decay=self.config.weight_decay,
+                warmup_ratio=self.config.warmup_ratio,
+                total_steps=total_steps,
+            ),
+        )
         self.model, self.optimizer, train_dataloader, self.scheduler = self.accelerator.prepare(
             self.model,
             self.optimizer,
             train_dataloader,
             self.scheduler,
         )
+        if self.optimizer is None or self.scheduler is None:
+            raise RuntimeError("Optimizer and scheduler must be initialized before training")
         global_step = 0
         running_loss = RunningAverage()
         throughput = ThroughputMeter()
@@ -148,13 +155,18 @@ class EmbeddingTrainer:
                     else:
                         raise ValueError(f"Unsupported batch format: {self.config.batch_format}")
                     self.accelerator.backward(loss)
-                    self.optimizer.step()
-                    self.scheduler.step()
-                    self.optimizer.zero_grad(set_to_none=True)
+                    if self.accelerator.sync_gradients:
+                        self.optimizer.step()
+                        self.scheduler.step()
+                        self.optimizer.zero_grad(set_to_none=True)
 
-                global_step += 1
                 running_loss.update(float(loss.detach().item()))
                 throughput.update(anchor_embeddings.size(0), time.perf_counter() - start_time)
+
+                if not self.accelerator.sync_gradients:
+                    continue
+
+                global_step += 1
 
                 if eval_fn is not None and global_step % self.config.eval_every_steps == 0:
                     latest_metrics = eval_fn(self.accelerator.unwrap_model(self.model))
@@ -169,6 +181,17 @@ class EmbeddingTrainer:
                         config_snapshot=config_snapshot,
                     )
                     checkpoint_dir = str(checkpoint_path)
+
+                if (
+                    self.config.max_update_steps is not None
+                    and global_step >= self.config.max_update_steps
+                ):
+                    break
+            if (
+                self.config.max_update_steps is not None
+                and global_step >= self.config.max_update_steps
+            ):
+                break
 
         if checkpoint_dir is None:
             checkpoint_path = self.save_checkpoint(
@@ -189,6 +212,27 @@ class EmbeddingTrainer:
             metrics=latest_metrics,
         )
 
+    def _resolve_total_steps(self, train_dataloader: DataLoader[Any]) -> int:
+        if self.config.max_update_steps is not None:
+            return max(1, self.config.max_update_steps)
+
+        inferred_steps = self._infer_total_update_steps(train_dataloader)
+        if inferred_steps is not None:
+            return inferred_steps
+
+        raise RuntimeError(
+            "Unable to infer optimizer update steps from training data. "
+            "Set training.max_update_steps when using unknown-length datasets."
+        )
+
+    def _infer_total_update_steps(self, train_dataloader: DataLoader[Any]) -> int | None:
+        try:
+            micro_steps_per_epoch = len(train_dataloader)
+        except TypeError:
+            return None
+        updates_per_epoch = ceil(micro_steps_per_epoch / max(1, self.config.grad_accum_steps))
+        return max(1, updates_per_epoch * self.config.epochs)
+
     def save_checkpoint(
         self,
         *,
@@ -200,6 +244,8 @@ class EmbeddingTrainer:
         checkpoint_dir = ensure_dir(self.run_dir / "checkpoints" / f"step-{global_step:05d}")
         model_path = checkpoint_dir / "model.pt"
         torch.save(unwrapped_model.state_dict(), model_path)
+        if self.optimizer is None or self.scheduler is None:
+            raise RuntimeError("Optimizer and scheduler must be initialized before checkpointing")
         torch.save(self.optimizer.state_dict(), checkpoint_dir / "optimizer.pt")
         torch.save(self.scheduler.state_dict(), checkpoint_dir / "scheduler.pt")
         dump_json(checkpoint_dir / "metadata.json", self.metadata.to_dict())

@@ -4,10 +4,16 @@ import json
 from pathlib import Path
 from typing import Any
 
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, IterableDataset
 
 from bitnet_embed.data.collators import PairCollator, TripletCollator
-from bitnet_embed.data.loaders import ExampleDataset, build_dataset_spec, load_examples
+from bitnet_embed.data.loaders import (
+    ExampleDataset,
+    IterableExampleDataset,
+    build_dataset_spec,
+    iter_examples_from_specs,
+    load_examples,
+)
 from bitnet_embed.data.schemas import (
     PairExample,
     QueryDocumentExample,
@@ -44,6 +50,11 @@ def build_training_config(config: dict[str, Any]) -> TrainingConfig:
         log_every_steps=int(training.get("log_every_steps", 10)),
         eval_every_steps=int(training.get("eval_every_steps", 50)),
         save_every_steps=int(training.get("save_every_steps", 50)),
+        max_update_steps=(
+            int(training["max_update_steps"])
+            if training.get("max_update_steps") is not None
+            else None
+        ),
         max_length=int(config.get("tokenization", {}).get("max_length", 64)),
         run_root=str(training.get("run_root", "runs")),
         seed=int(config.get("seed", 42)),
@@ -60,7 +71,13 @@ def load_data_config(config: dict[str, Any]) -> dict[str, Any]:
 
 def build_train_dataset(
     data_config: dict[str, Any],
-) -> tuple[ExampleDataset[PairExample] | ExampleDataset[TripletExample], str]:
+) -> tuple[
+    ExampleDataset[PairExample]
+    | ExampleDataset[TripletExample]
+    | IterableExampleDataset[PairExample]
+    | IterableExampleDataset[TripletExample],
+    str,
+]:
     train_sets = data_config.get("train_sets", [])
     if not train_sets:
         raise RuntimeError("At least one training dataset must be configured")
@@ -68,7 +85,30 @@ def build_train_dataset(
     if len(formats) != 1:
         raise RuntimeError(f"Mixed training formats are not supported yet: {sorted(formats)}")
     dataset_format = next(iter(formats))
-    loaded_examples = [load_examples(build_dataset_spec(payload)) for payload in train_sets]
+    specs = [build_dataset_spec(payload) for payload in train_sets]
+    use_lazy_loading = any(spec.materialization == "lazy" for spec in specs)
+
+    if use_lazy_loading:
+        if dataset_format == "pair":
+
+            def pair_iterator() -> Any:
+                for item in iter_examples_from_specs(specs):
+                    if isinstance(item, PairExample):
+                        yield item
+
+            return IterableExampleDataset(pair_iterator), dataset_format
+
+        if dataset_format == "triplet":
+
+            def triplet_iterator() -> Any:
+                for item in iter_examples_from_specs(specs):
+                    if isinstance(item, TripletExample):
+                        yield item
+
+            return IterableExampleDataset(triplet_iterator), dataset_format
+        raise RuntimeError(f"Unsupported training format: {dataset_format}")
+
+    loaded_examples = [load_examples(spec) for spec in specs]
     if dataset_format == "pair":
         pairs: list[PairExample] = []
         for batch in loaded_examples:
@@ -143,7 +183,7 @@ def run_training(config_path: str, *, mode_override: str | None = None) -> Train
     dataloader: DataLoader[PairExample | TripletExample] = DataLoader(
         dataset,
         batch_size=training_config.micro_batch_size,
-        shuffle=True,
+        shuffle=not isinstance(dataset, IterableDataset),
         collate_fn=collator,
     )
     trainer = EmbeddingTrainer(model, loss_fn, training_config)
