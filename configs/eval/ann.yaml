@@ -1,0 +1,4 @@
+service_config: configs/service/api.yaml
+data_config: configs/data/smoke_retrieval.yaml
+top_k: 5
+output_path: runs/benchmarks/ann.json
