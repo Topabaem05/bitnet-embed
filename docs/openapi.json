@@ -39,9 +39,15 @@
             "title": "Input"
           },
           "normalize": {
-            "default": true,
-            "title": "Normalize",
-            "type": "boolean"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalize"
           },
           "task": {
             "default": "document",
@@ -62,7 +68,6 @@
                 "type": "null"
               }
             ],
-            "default": 768,
             "title": "Truncate Dim"
           }
         },

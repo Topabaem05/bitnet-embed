@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field, field_validator
 class EmbeddingRequest(BaseModel):
     input: str | list[str]
     task: Literal["query", "document"] = "document"
-    normalize: bool = True
-    truncate_dim: int | None = Field(default=768, ge=1)
+    normalize: bool | None = None
+    truncate_dim: int | None = Field(default=None, ge=1)
 
     @field_validator("input")
     @classmethod

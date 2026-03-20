@@ -33,13 +33,6 @@ def create_app(
     async def create_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
         REQUEST_COUNTER.inc()
         with REQUEST_LATENCY.time():
-            if request.truncate_dim is None:
-                request = request.model_copy(
-                    update={
-                        "truncate_dim": resolved_config.truncate_dim_default,
-                        "normalize": resolved_config.normalize_default,
-                    }
-                )
             return service_runtime.embed(request)
 
     return app
