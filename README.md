@@ -29,6 +29,11 @@ uv run python scripts/run_api.py --config configs/service/api.yaml
 - `scripts/`: runnable entrypoints for smoke, training, evaluation, and benchmark flows
 - `tests/`: unit and integration smoke tests
 
+## Stage Plans
+
+- `configs/plan/smoke_stages.yaml`: local multi-stage progression matching the SDD's early-stage flow
+- `scripts/run_stage_plan.py`: sequential stage runner with JSON and Markdown plan summaries
+
 ## Service Artifacts
 
 - `configs/service/api.yaml`: service runtime defaults
