@@ -11,6 +11,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from bitnet_embed.train.callbacks import RunMetadata
+from bitnet_embed.train.factory import load_training_checkpoint_state
 from bitnet_embed.train.loops import encode_pair_batch, encode_triplet_batch, move_batch_to_device
 from bitnet_embed.train.optim import OptimizerConfig, build_optimizer, build_scheduler
 from bitnet_embed.utils.io import dump_json, ensure_dir, get_git_revision
@@ -37,10 +38,15 @@ class TrainingConfig:
     run_root: str = "runs"
     seed: int = 42
     batch_format: str = "pair"
+    run_id: str | None = None
+    parent_run_id: str | None = None
+    plan_name: str | None = None
+    resume_from_checkpoint: str | None = None
 
 
 @dataclass(slots=True)
 class TrainingSummary:
+    run_id: str
     global_step: int
     avg_loss: float
     throughput: float
@@ -81,6 +87,10 @@ class EmbeddingTrainer:
             seed=config.seed,
             mode=config.mode,
             git_revision=get_git_revision(Path.cwd()),
+            run_id=config.run_id,
+            parent_run_id=config.parent_run_id,
+            plan_name=config.plan_name,
+            resume_from=config.resume_from_checkpoint,
         )
 
     def _build_run_dir(self) -> Path:
@@ -127,6 +137,8 @@ class EmbeddingTrainer:
         if self.optimizer is None or self.scheduler is None:
             raise RuntimeError("Optimizer and scheduler must be initialized before training")
         global_step = 0
+        if self.config.resume_from_checkpoint:
+            global_step = self._resume_from_checkpoint(Path(self.config.resume_from_checkpoint))
         running_loss = RunningAverage()
         throughput = ThroughputMeter()
         latest_metrics: dict[str, float] = {}
@@ -205,12 +217,22 @@ class EmbeddingTrainer:
             dump_json(self.run_dir / "metrics" / "final.json", latest_metrics)
 
         return TrainingSummary(
+            run_id=self.metadata.run_id,
             global_step=global_step,
             avg_loss=running_loss.value,
             throughput=throughput.per_second,
             checkpoint_dir=checkpoint_dir,
             metrics=latest_metrics,
         )
+
+    def _resume_from_checkpoint(self, checkpoint_dir: Path) -> int:
+        if self.optimizer is None or self.scheduler is None:
+            raise RuntimeError("Optimizer and scheduler must be initialized before resume")
+        checkpoint_state = load_training_checkpoint_state(checkpoint_dir)
+        self.model.load_state_dict(checkpoint_state.model_state)
+        self.optimizer.load_state_dict(checkpoint_state.optimizer_state)
+        self.scheduler.load_state_dict(checkpoint_state.scheduler_state)
+        return checkpoint_state.global_step
 
     def _resolve_total_steps(self, train_dataloader: DataLoader[Any]) -> int:
         if self.config.max_update_steps is not None:
@@ -249,6 +271,7 @@ class EmbeddingTrainer:
         torch.save(self.optimizer.state_dict(), checkpoint_dir / "optimizer.pt")
         torch.save(self.scheduler.state_dict(), checkpoint_dir / "scheduler.pt")
         dump_json(checkpoint_dir / "metadata.json", self.metadata.to_dict())
+        dump_json(checkpoint_dir / "training_state.json", {"global_step": global_step})
         dump_json(checkpoint_dir / "metrics.json", metrics)
         if config_snapshot is not None:
             dump_json(checkpoint_dir / "config.json", config_snapshot)
