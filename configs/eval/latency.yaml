@@ -1,4 +1,10 @@
+service_config: configs/service/api.yaml
+task: document
+batch_size: 8
+normalize: true
+truncate_dim: 128
 batches:
   - ["hello world"]
   - ["quick fox", "bright ocean"]
 repetitions: 3
+output_path: runs/benchmarks/latency.json
