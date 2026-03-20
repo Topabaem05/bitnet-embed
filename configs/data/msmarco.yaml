@@ -1,0 +1,6 @@
+train_sets:
+  - name: sentence-transformers/msmarco-bm25
+    subset: triplet
+    split: train
+  - name: sentence-transformers/msmarco-corpus
+    split: train

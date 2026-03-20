@@ -1,0 +1,4 @@
+eval_sets:
+  - name: irds/beir_nfcorpus_dev
+  - name: irds/beir_fiqa_test
+  - name: irds/beir_scifact_test
