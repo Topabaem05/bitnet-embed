@@ -1,0 +1,4 @@
+batches:
+  - ["hello world"]
+  - ["quick fox", "bright ocean"]
+repetitions: 3
