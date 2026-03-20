@@ -40,6 +40,10 @@ uv run python scripts/run_api.py --config configs/service/api.yaml
 - `docs/openapi.json`: generated OpenAPI schema
 - `.github/workflows/ci.yml`: lint, typecheck, test, smoke-train, and OpenAPI export checks
 
+## Packaging
+
+- `scripts/export_hf_package.py`: export a checkpoint into an HF-style package directory with config, weights, tokenizer, and README
+
 ## Notes
 
 - The first milestone keeps BitNet quality validation separate from any future `bitnet.cpp` efficiency track.
