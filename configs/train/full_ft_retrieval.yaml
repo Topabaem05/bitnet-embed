@@ -1,5 +1,6 @@
 experiment_name: bitnet_full_ft_retrieval
 seed: 42
+data_config: configs/data/smoke_retrieval.yaml
 
 model:
   backend: huggingface
@@ -30,5 +31,5 @@ training:
   run_root: runs
 
 loss:
-  name: symmetric_infonce
-  temperature: 0.05
+  name: triplet
+  margin: 0.2
