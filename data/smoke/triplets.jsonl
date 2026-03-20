@@ -1,0 +1,4 @@
+{"anchor":"find lupus symptoms","positive":"lupus symptoms include fatigue and joint pain","negative":"stock prices rose today","task":"retrieval","source":"smoke-triplet"}
+{"anchor":"benefits of vitamin d","positive":"vitamin d supports bone health","negative":"car tires need rotation","task":"retrieval","source":"smoke-triplet"}
+{"anchor":"ocean tides","positive":"tides are driven by gravity","negative":"coffee beans are roasted","task":"retrieval","source":"smoke-triplet"}
+{"anchor":"python unit tests","positive":"pytest helps build unit tests","negative":"mountain snow melts in spring","task":"retrieval","source":"smoke-triplet"}

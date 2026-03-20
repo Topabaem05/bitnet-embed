@@ -1,0 +1,8 @@
+train_sets:
+  - local_path: data/smoke/triplets.jsonl
+    format: triplet
+    split: train
+eval_sets:
+  - local_path: data/smoke/query_documents.jsonl
+    format: query_document
+    split: validation

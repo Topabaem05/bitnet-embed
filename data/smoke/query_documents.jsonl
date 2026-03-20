@@ -1,0 +1,4 @@
+{"query":"find lupus symptoms","document":"lupus symptoms include fatigue and joint pain","label":1,"source":"smoke-retrieval"}
+{"query":"find lupus symptoms","document":"stock prices rose today","label":0,"source":"smoke-retrieval"}
+{"query":"benefits of vitamin d","document":"vitamin d supports bone health","label":1,"source":"smoke-retrieval"}
+{"query":"benefits of vitamin d","document":"car tires need rotation","label":0,"source":"smoke-retrieval"}
