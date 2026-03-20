@@ -50,6 +50,7 @@ uv run python scripts/run_api.py --config configs/service/api.yaml
 - `scripts/compare_reports.py`: compare one or more bundled report outputs into a compact comparison artifact
 - `scripts/benchmark_memory.py`: generate RSS/CUDA memory benchmarks for the current runtime configuration
 - `scripts/eval_sts.py`: generate a standalone STS report artifact from scored-pair evaluation data
+- `scripts/eval_clustering.py`: generate a standalone clustering report artifact from labeled smoke data
 
 ## Phase 2
 
