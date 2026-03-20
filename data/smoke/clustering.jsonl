@@ -1,0 +1,4 @@
+{"text":"cat and dog","label":0,"source":"smoke-cluster"}
+{"text":"puppy and kitten","label":0,"source":"smoke-cluster"}
+{"text":"stock market rally","label":1,"source":"smoke-cluster"}
+{"text":"earnings and finance","label":1,"source":"smoke-cluster"}

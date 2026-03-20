@@ -9,6 +9,7 @@ from typing import Any, Generic, TypeVar
 from torch.utils.data import Dataset
 
 from bitnet_embed.data.schemas import (
+    LabeledTextExample,
     PairExample,
     QueryDocumentExample,
     ScoredPairExample,
@@ -133,6 +134,15 @@ def build_smoke_query_documents() -> list[QueryDocumentExample]:
     ]
 
 
+def build_smoke_labeled_texts() -> list[LabeledTextExample]:
+    return [
+        LabeledTextExample(text="cat and dog", label=0, source="smoke"),
+        LabeledTextExample(text="puppy and kitten", label=0, source="smoke"),
+        LabeledTextExample(text="stock market rally", label=1, source="smoke"),
+        LabeledTextExample(text="earnings and finance", label=1, source="smoke"),
+    ]
+
+
 def rows_to_pair_examples(rows: list[dict[str, Any]]) -> list[PairExample]:
     return [
         PairExample(
@@ -189,6 +199,17 @@ def rows_to_scored_pair_examples(rows: list[dict[str, Any]]) -> list[ScoredPairE
     ]
 
 
+def rows_to_labeled_text_examples(rows: list[dict[str, Any]]) -> list[LabeledTextExample]:
+    return [
+        LabeledTextExample(
+            text=str(row.get("text", row.get("document", row.get("anchor", "")))),
+            label=int(row.get("label", 0)),
+            source=str(row.get("source", "unknown")),
+        )
+        for row in rows
+    ]
+
+
 def build_dataset_spec(payload: dict[str, Any]) -> DatasetSpec:
     return DatasetSpec(
         name=str(payload.get("name", payload.get("local_path", "local"))),
@@ -202,7 +223,9 @@ def build_dataset_spec(payload: dict[str, Any]) -> DatasetSpec:
 
 def load_examples(
     spec: DatasetSpec,
-) -> Sequence[PairExample | TripletExample | QueryDocumentExample | ScoredPairExample]:
+) -> Sequence[
+    PairExample | TripletExample | QueryDocumentExample | ScoredPairExample | LabeledTextExample
+]:
     rows = load_dataset_records(spec)
     if spec.format == "pair":
         return rows_to_pair_examples(rows)
@@ -212,4 +235,6 @@ def load_examples(
         return rows_to_query_document_examples(rows)
     if spec.format == "scored_pair":
         return rows_to_scored_pair_examples(rows)
+    if spec.format == "labeled_text":
+        return rows_to_labeled_text_examples(rows)
     raise ValueError(f"Unsupported dataset format: {spec.format}")

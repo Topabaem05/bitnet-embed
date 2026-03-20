@@ -38,6 +38,13 @@ class ScoredPairExample:
 
 
 @dataclass(slots=True)
+class LabeledTextExample:
+    text: str
+    label: int
+    source: str = "unknown"
+
+
+@dataclass(slots=True)
 class EncodedEmbeddingRecord:
     record_id: str
     text: str
