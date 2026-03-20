@@ -47,6 +47,7 @@ uv run python scripts/run_api.py --config configs/service/api.yaml
 ## Reports
 
 - `scripts/generate_reports.py`: bundle stage, latency, ANN, and package artifacts into a single summary
+- `scripts/compare_reports.py`: compare one or more bundled report outputs into a compact comparison artifact
 
 ## Notes
 

@@ -1,0 +1,5 @@
+comparison_name: bitnet-embed-local-comparison
+output_dir: reports/comparisons
+reports:
+  - name: smoke
+    path: reports/smoke/summary.json

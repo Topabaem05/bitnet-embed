@@ -1,0 +1,22 @@
+# bitnet-embed-local-comparison
+
+## Reports
+
+### smoke
+- `ann_ann_mrr@1`: `0.0`
+- `ann_ann_mrr@5`: `0.29166666666666663`
+- `ann_ann_ndcg@1`: `0.0`
+- `ann_ann_ndcg@5`: `0.4653382855837924`
+- `ann_ann_recall@1`: `0.0`
+- `ann_ann_recall@5`: `1.0`
+- `latency_p50_latency`: `6.495900015579537e-05`
+- `latency_p95_latency`: `0.00019841700122924522`
+- `latency_startup_p50`: `1.5839978004805744e-06`
+- `latency_startup_p95`: `1.5839978004805744e-06`
+- `latency_throughput`: `554.1444713652988`
+- `package_name`: `bitnet-smoke-hf`
+- `package_sts_spearman`: `0.19999999999999996`
+- `stage_best_stage_by_loss`: `stage2_initial_retrieval`
+- `stage_best_stage_loss`: `0.13966812193393707`
+- `stage_plan_name`: `smoke_stages`
+- `stage_stage_count`: `3`
