@@ -1,0 +1,22 @@
+search_name: smoke_budget_search
+base_config: configs/train/smoke.yaml
+output_root: runs/search/smoke_budget
+primary_metric: avg_loss
+maximize: false
+
+trials:
+  - name: baseline_lr
+    overrides:
+      training:
+        lr: 0.001
+  - name: lower_lr
+    overrides:
+      training:
+        lr: 0.0005
+
+rungs:
+  - name: rung_1_screen
+    max_update_steps: 1
+    promote_top_k: 1
+  - name: rung_2_confirm
+    max_update_steps: 2
