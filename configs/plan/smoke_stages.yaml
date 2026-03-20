@@ -1,0 +1,14 @@
+plan_name: smoke_stages
+output_root: runs/plans/smoke_stages
+stages:
+  - name: stage0_smoke
+    train_config: configs/train/smoke.yaml
+    description: Verify tokenizer behavior, hidden-state extraction, pooling, backward pass, and checkpointing.
+  - name: stage1_head_only_feasibility
+    train_config: configs/train/smoke.yaml
+    mode_override: head_only
+    description: Validate semantic structure in hidden states with the head-only path.
+  - name: stage2_initial_retrieval
+    train_config: configs/train/smoke_retrieval.yaml
+    mode_override: full_ft
+    description: Transition from semantic similarity to asymmetric retrieval on local smoke triplets.
