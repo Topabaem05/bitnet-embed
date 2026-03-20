@@ -1,5 +1,6 @@
 experiment_name: bitnet_smoke
 seed: 42
+data_config: configs/data/smoke_semantic.yaml
 
 model:
   backend: toy
