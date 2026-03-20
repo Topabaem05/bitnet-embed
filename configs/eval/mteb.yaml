@@ -1,2 +1,7 @@
+model_name: bitnet-embed-smoke
+revision: local
+output_folder: runs/mteb
+package_dir: null
+checkpoint_dir: null
 tasks:
   - STSBenchmark
