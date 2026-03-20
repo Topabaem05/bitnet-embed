@@ -56,4 +56,4 @@ def test_export_and_load_hf_style_package(tmp_path: Path) -> None:
     restored_embeddings = restored.encode(
         ["packaged model"], EncodeConfig(batch_size=1, truncate_dim=8)
     )
-    assert torch.allclose(original_embeddings, restored_embeddings)
+    assert torch.allclose(original_embeddings, restored_embeddings, atol=1e-6, rtol=1e-6)
