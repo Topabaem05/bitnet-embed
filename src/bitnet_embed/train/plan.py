@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from bitnet_embed.eval.reporting import build_stage_plan_markdown
 from bitnet_embed.train.workflow import run_training
@@ -37,10 +38,16 @@ def load_stage_specs(payload: dict[str, Any]) -> tuple[str, list[StageSpec], str
 def run_stage_plan(config_path: str) -> dict[str, object]:
     payload = load_yaml(config_path)
     plan_name, stages, output_root = load_stage_specs(payload)
+    plan_run_id = f"{plan_name}-{uuid4().hex[:12]}"
     output_dir = ensure_dir(output_root)
     stage_summaries: list[dict[str, object]] = []
     for stage in stages:
-        summary = run_training(stage.train_config, mode_override=stage.mode_override)
+        summary = run_training(
+            stage.train_config,
+            mode_override=stage.mode_override,
+            plan_name=plan_name,
+            parent_run_id=plan_run_id,
+        )
         stage_summaries.append(
             {
                 "name": stage.name,
@@ -52,6 +59,7 @@ def run_stage_plan(config_path: str) -> dict[str, object]:
         )
     plan_summary: dict[str, object] = {
         "plan_name": plan_name,
+        "plan_run_id": plan_run_id,
         "config_path": config_path,
         "stage_count": len(stage_summaries),
         "stages": stage_summaries,

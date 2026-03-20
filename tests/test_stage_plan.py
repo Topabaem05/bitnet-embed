@@ -25,5 +25,7 @@ def test_run_stage_plan_writes_json_and_markdown(tmp_path: Path) -> None:
     )
     summary = run_stage_plan(str(config_path))
     assert summary["stage_count"] == 2
+    assert isinstance(summary["plan_run_id"], str)
+    assert summary["plan_run_id"]
     assert (output_root / "plan_summary.json").exists()
     assert (output_root / "plan_summary.md").exists()
