@@ -13,7 +13,7 @@ def flatten_report(report: dict[str, Any]) -> dict[str, float | str]:
         for key, value in stage_summary.items():
             if isinstance(value, (int, float, str)):
                 flat[f"stage_{key}"] = value
-    for section in ("latency", "memory", "ann"):
+    for section in ("sts", "latency", "memory", "ann"):
         values = report.get(section, {})
         if isinstance(values, dict):
             for key, value in values.items():

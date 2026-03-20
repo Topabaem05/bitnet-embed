@@ -1,6 +1,7 @@
 report_name: bitnet-embed-smoke-report
 output_dir: reports/smoke
 stage_plan: runs/plans/smoke_stages/plan_summary.json
+sts_report: runs/benchmarks/sts.json
 latency_report: runs/benchmarks/latency.json
 memory_report: runs/benchmarks/memory.json
 ann_report: runs/benchmarks/ann.json

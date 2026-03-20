@@ -54,5 +54,8 @@
       "stage1_head_only_feasibility",
       "stage2_initial_retrieval"
     ]
+  },
+  "sts": {
+    "sts_spearman": -0.3999999999999999
   }
 }

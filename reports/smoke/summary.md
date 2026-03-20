@@ -14,6 +14,10 @@
 - `startup_p95`: `1.5839978004805744e-06`
 - `throughput`: `554.1444713652988`
 
+## STS
+
+- `sts_spearman`: `-0.3999999999999999`
+
 ## Memory
 
 - `peak_cuda_mb`: `0.0`
