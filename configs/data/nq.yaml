@@ -1,7 +1,9 @@
 train_sets:
   - name: sentence-transformers/natural-questions
     subset: pair
+    format: pair
     split: train
   - name: tomaarsen/natural-questions-hard-negatives
     subset: triplet-5
+    format: triplet
     split: train

@@ -1,10 +1,13 @@
 train_sets:
   - name: sentence-transformers/all-nli
     subset: pair
+    format: pair
     split: train
   - name: sentence-transformers/quora-duplicates
     subset: pair
+    format: pair
     split: train
 eval_sets:
   - name: sentence-transformers/stsb
+    format: scored_pair
     split: validation

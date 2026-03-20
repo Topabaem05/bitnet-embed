@@ -30,6 +30,14 @@ class QueryDocumentExample:
 
 
 @dataclass(slots=True)
+class ScoredPairExample:
+    left: str
+    right: str
+    score: float
+    source: str = "unknown"
+
+
+@dataclass(slots=True)
 class EncodedEmbeddingRecord:
     record_id: str
     text: str
