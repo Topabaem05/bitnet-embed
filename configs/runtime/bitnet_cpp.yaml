@@ -1,0 +1,4 @@
+binary_path: bitnet_cpp/bitnet.cpp
+model_path: runs/packages/bitnet_smoke_hf
+output_path: bitnet_cpp/feasibility.json
+prompt_mode: embedding

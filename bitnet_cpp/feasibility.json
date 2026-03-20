@@ -1,0 +1,15 @@
+{
+  "binary_found": false,
+  "binary_path": "bitnet_cpp/bitnet.cpp",
+  "model_found": true,
+  "model_path": "runs/packages/bitnet_smoke_hf",
+  "next_steps": [
+    "Provide a compiled bitnet.cpp binary or bridge entrypoint",
+    "Map exported embedding package weights into the low-bit runtime path",
+    "Validate embedding extraction parity against the Python runtime",
+    "Benchmark latency, memory, and throughput on the specialized runtime"
+  ],
+  "prompt_mode": "embedding",
+  "ready_for_integration": false,
+  "status": "scaffold"
+}
