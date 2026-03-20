@@ -21,6 +21,7 @@ from bitnet_embed.data.schemas import (
     TripletExample,
 )
 from bitnet_embed.eval.harness import evaluate_query_documents, evaluate_scored_pairs
+from bitnet_embed.ledger import RunLedgerEntry, append_run_ledger_entry
 from bitnet_embed.losses.contrastive import SymmetricInfoNCELoss
 from bitnet_embed.losses.triplet import CosineTripletLoss
 from bitnet_embed.modeling.prompts import PromptConfig
@@ -32,6 +33,13 @@ from bitnet_embed.utils.seed import set_seed
 
 def load_config(path: str) -> dict[str, Any]:
     return load_yaml(path)
+
+
+def _optional_string(value: Any) -> str | None:
+    if value is None:
+        return None
+    candidate = str(value).strip()
+    return candidate if candidate else None
 
 
 def build_training_config(config: dict[str, Any]) -> TrainingConfig:
@@ -58,6 +66,10 @@ def build_training_config(config: dict[str, Any]) -> TrainingConfig:
         max_length=int(config.get("tokenization", {}).get("max_length", 64)),
         run_root=str(training.get("run_root", "runs")),
         seed=int(config.get("seed", 42)),
+        run_id=_optional_string(training.get("run_id")),
+        parent_run_id=_optional_string(training.get("parent_run_id")),
+        plan_name=_optional_string(training.get("plan_name")),
+        resume_from_checkpoint=_optional_string(training.get("resume_from_checkpoint")),
     )
 
 
@@ -147,12 +159,22 @@ def build_eval_fn(data_config: dict[str, Any]) -> Any:
     return evaluate
 
 
-def run_training(config_path: str, *, mode_override: str | None = None) -> TrainingSummary:
+def run_training(
+    config_path: str,
+    *,
+    mode_override: str | None = None,
+    plan_name: str | None = None,
+    parent_run_id: str | None = None,
+) -> TrainingSummary:
     config = load_config(config_path)
     data_config = load_data_config(config)
     training_config = build_training_config(config)
     if mode_override is not None:
         training_config.mode = mode_override
+    if plan_name is not None:
+        training_config.plan_name = plan_name
+    if parent_run_id is not None:
+        training_config.parent_run_id = parent_run_id
     set_seed(training_config.seed)
     model = build_model(config.get("model", {}), config.get("lora"))
     if training_config.mode == "head_only":
@@ -188,28 +210,67 @@ def run_training(config_path: str, *, mode_override: str | None = None) -> Train
     )
     trainer = EmbeddingTrainer(model, loss_fn, training_config)
     eval_fn = build_eval_fn(data_config)
-    summary = trainer.train(
-        dataloader,
-        eval_fn=eval_fn,
-        config_snapshot={**config, "resolved_data": data_config},
-    )
     output_path = (
         Path(training_config.run_root)
         / training_config.experiment_name
         / "artifacts"
         / "summary.json"
     )
-    output_path.write_text(
-        json.dumps(
-            summary.metrics
-            | {
-                "avg_loss": summary.avg_loss,
-                "global_step": summary.global_step,
-                "throughput": summary.throughput,
-            },
-            indent=2,
-            sort_keys=True,
-        ),
-        encoding="utf-8",
-    )
-    return summary
+    ledger_path = Path(training_config.run_root) / "ledger.jsonl"
+    try:
+        summary = trainer.train(
+            dataloader,
+            eval_fn=eval_fn,
+            config_snapshot={**config, "resolved_data": data_config},
+        )
+        output_path.write_text(
+            json.dumps(
+                summary.metrics
+                | {
+                    "avg_loss": summary.avg_loss,
+                    "global_step": summary.global_step,
+                    "throughput": summary.throughput,
+                },
+                indent=2,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        append_run_ledger_entry(
+            ledger_path,
+            RunLedgerEntry(
+                run_id=summary.run_id,
+                experiment_name=training_config.experiment_name,
+                status="completed",
+                config_path=config_path,
+                summary_path=str(output_path),
+                checkpoint_dir=summary.checkpoint_dir,
+                metrics={
+                    "global_step": summary.global_step,
+                    "avg_loss": summary.avg_loss,
+                    "throughput": summary.throughput,
+                    **summary.metrics,
+                },
+                parent_run_id=training_config.parent_run_id,
+                plan_name=training_config.plan_name,
+                resume_from=training_config.resume_from_checkpoint,
+            ),
+        )
+        return summary
+    except Exception:
+        append_run_ledger_entry(
+            ledger_path,
+            RunLedgerEntry(
+                run_id=trainer.metadata.run_id,
+                experiment_name=training_config.experiment_name,
+                status="failed",
+                config_path=config_path,
+                summary_path=str(output_path),
+                checkpoint_dir=None,
+                metrics={},
+                parent_run_id=training_config.parent_run_id,
+                plan_name=training_config.plan_name,
+                resume_from=training_config.resume_from_checkpoint,
+            ),
+        )
+        raise
