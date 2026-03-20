@@ -44,6 +44,10 @@ uv run python scripts/run_api.py --config configs/service/api.yaml
 
 - `scripts/export_hf_package.py`: export a checkpoint into an HF-style package directory with config, weights, tokenizer, and README
 
+## Reports
+
+- `scripts/generate_reports.py`: bundle stage, latency, ANN, and package artifacts into a single summary
+
 ## Notes
 
 - The first milestone keeps BitNet quality validation separate from any future `bitnet.cpp` efficiency track.
