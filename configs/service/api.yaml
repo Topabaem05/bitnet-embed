@@ -1,0 +1,7 @@
+model_name: bitnet-embed-smoke
+host: 0.0.0.0
+port: 8000
+normalize_default: true
+truncate_dim_default: 768
+backend: deterministic
+openapi_path: docs/openapi.json

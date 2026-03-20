@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
+from bitnet_embed.serve.config import ServiceConfig
 from bitnet_embed.serve.health import build_health_payload
 from bitnet_embed.serve.runtime import EmbeddingRuntime, build_default_runtime
 from bitnet_embed.serve.schemas import EmbeddingRequest, EmbeddingResponse
@@ -12,8 +13,12 @@ REQUEST_COUNTER = Counter("bitnet_embed_requests_total", "Total embedding reques
 REQUEST_LATENCY = Histogram("bitnet_embed_request_latency_seconds", "Embedding request latency")
 
 
-def create_app(runtime: EmbeddingRuntime | None = None) -> FastAPI:
-    service_runtime = runtime or build_default_runtime()
+def create_app(
+    runtime: EmbeddingRuntime | None = None,
+    service_config: ServiceConfig | None = None,
+) -> FastAPI:
+    resolved_config = service_config or ServiceConfig()
+    service_runtime = runtime or build_default_runtime(resolved_config)
     app = FastAPI(title="bitnet-embed", version="0.1.0")
 
     @app.get("/health")
@@ -28,6 +33,13 @@ def create_app(runtime: EmbeddingRuntime | None = None) -> FastAPI:
     async def create_embeddings(request: EmbeddingRequest) -> EmbeddingResponse:
         REQUEST_COUNTER.inc()
         with REQUEST_LATENCY.time():
+            if request.truncate_dim is None:
+                request = request.model_copy(
+                    update={
+                        "truncate_dim": resolved_config.truncate_dim_default,
+                        "normalize": resolved_config.normalize_default,
+                    }
+                )
             return service_runtime.embed(request)
 
     return app

@@ -6,6 +6,7 @@ from typing import Protocol
 import torch
 
 from bitnet_embed.modeling.model import EncodeConfig
+from bitnet_embed.serve.config import ServiceConfig
 from bitnet_embed.serve.schemas import EmbeddingData, EmbeddingRequest, EmbeddingResponse, UsageInfo
 
 
@@ -57,5 +58,11 @@ class EmbeddingRuntime:
         )
 
 
-def build_default_runtime() -> EmbeddingRuntime:
-    return EmbeddingRuntime(model=DeterministicEmbeddingBackend())
+def build_default_runtime(config: ServiceConfig | None = None) -> EmbeddingRuntime:
+    service_config = config or ServiceConfig()
+    return EmbeddingRuntime(
+        model=DeterministicEmbeddingBackend(dimension=service_config.truncate_dim_default),
+        model_name=service_config.model_name,
+        normalize_default=service_config.normalize_default,
+        truncate_dim_default=service_config.truncate_dim_default,
+    )
