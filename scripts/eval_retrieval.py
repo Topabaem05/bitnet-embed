@@ -1,19 +1,29 @@
 from __future__ import annotations
 
+import argparse
 import json
 
-from bitnet_embed.eval.retrieval import evaluate_retrieval
-from bitnet_embed.modeling.model import EncodeConfig
+from bitnet_embed.data.loaders import build_dataset_spec, load_examples
+from bitnet_embed.data.schemas import QueryDocumentExample
+from bitnet_embed.eval.harness import evaluate_query_documents
 from bitnet_embed.modeling.smoke import build_toy_embedding_model
+from bitnet_embed.utils.io import load_yaml
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="configs/data/smoke_retrieval.yaml")
+    args = parser.parse_args()
+
+    data_config = load_yaml(args.config)
+    eval_payload = data_config["eval_sets"][0]
+    examples = [
+        item
+        for item in load_examples(build_dataset_spec(eval_payload))
+        if isinstance(item, QueryDocumentExample)
+    ]
     model = build_toy_embedding_model()
-    queries = ["query: fast car", "query: ocean waves"]
-    documents = ["document: quick automobile", "document: sea surf", "document: stock report"]
-    query_embeddings = model.encode(queries, EncodeConfig(task="query", batch_size=2))
-    doc_embeddings = model.encode(documents, EncodeConfig(task="document", batch_size=3))
-    metrics = evaluate_retrieval(query_embeddings, doc_embeddings, {0: {0}, 1: {1}})
+    metrics = evaluate_query_documents(model, examples)
     print(json.dumps(metrics, indent=2, sort_keys=True))
 
 
