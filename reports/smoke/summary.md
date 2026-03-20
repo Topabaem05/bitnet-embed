@@ -14,6 +14,13 @@
 - `startup_p95`: `1.5839978004805744e-06`
 - `throughput`: `554.1444713652988`
 
+## Memory
+
+- `peak_cuda_mb`: `0.0`
+- `peak_rss_mb`: `182.859375`
+- `startup_cuda_mb`: `0.0`
+- `startup_rss_mb`: `182.859375`
+
 ## ANN
 
 - `ann_mrr@1`: `0.0`

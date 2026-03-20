@@ -6,6 +6,16 @@ from typing import Any
 from bitnet_embed.utils.io import dump_json, ensure_dir, load_json, load_yaml
 
 
+def load_optional_json(path: str | None) -> dict[str, Any]:
+    if path is None:
+        return {}
+    target = Path(path)
+    if not target.exists():
+        return {}
+    payload = load_json(target)
+    return payload if isinstance(payload, dict) else {}
+
+
 def summarize_stages(stage_plan: dict[str, Any]) -> dict[str, Any]:
     stages = stage_plan.get("stages", [])
     if not isinstance(stages, list) or not stages:
@@ -38,6 +48,13 @@ def build_report_markdown(bundle: dict[str, Any]) -> str:
         for key, value in latency.items():
             lines.append(f"- `{key}`: `{value}`")
         lines.append("")
+    memory = bundle.get("memory", {})
+    if memory:
+        lines.append("## Memory")
+        lines.append("")
+        for key, value in memory.items():
+            lines.append(f"- `{key}`: `{value}`")
+        lines.append("")
     ann = bundle.get("ann", {})
     if ann:
         lines.append("## ANN")
@@ -65,14 +82,22 @@ def run_report_bundle(config_path: str) -> dict[str, Any]:
     report_name = str(config.get("report_name", "bitnet-embed-report"))
     output_dir = Path(str(config.get("output_dir", "reports/latest")))
     ensure_dir(output_dir)
-    stage_plan = load_json(str(config["stage_plan"])) if config.get("stage_plan") else {}
-    latency = load_json(str(config["latency_report"])) if config.get("latency_report") else {}
-    ann = load_json(str(config["ann_report"])) if config.get("ann_report") else {}
-    package = load_json(str(config["package_manifest"])) if config.get("package_manifest") else {}
+    stage_plan = load_optional_json(str(config["stage_plan"]) if config.get("stage_plan") else None)
+    latency = load_optional_json(
+        str(config["latency_report"]) if config.get("latency_report") else None
+    )
+    memory = load_optional_json(
+        str(config["memory_report"]) if config.get("memory_report") else None
+    )
+    ann = load_optional_json(str(config["ann_report"]) if config.get("ann_report") else None)
+    package = load_optional_json(
+        str(config["package_manifest"]) if config.get("package_manifest") else None
+    )
     bundle = {
         "report_name": report_name,
         "stage_summary": summarize_stages(stage_plan),
         "latency": latency,
+        "memory": memory,
         "ann": ann,
         "package": package,
     }
