@@ -16,7 +16,8 @@ BitNet-based embedding research stack built from `bitnet_embedding_sdd_full.md`.
 uv sync --all-groups
 uv run pytest
 uv run python scripts/train_smoke.py --config configs/train/smoke.yaml
-uv run uvicorn bitnet_embed.serve.api:app --factory
+uv run python scripts/export_openapi.py --config configs/service/api.yaml
+uv run python scripts/run_api.py --config configs/service/api.yaml
 ```
 
 ## Layout
@@ -26,6 +27,12 @@ uv run uvicorn bitnet_embed.serve.api:app --factory
 - `src/bitnet_embed/`: package source
 - `scripts/`: runnable entrypoints for smoke, training, evaluation, and benchmark flows
 - `tests/`: unit and integration smoke tests
+
+## Service Artifacts
+
+- `configs/service/api.yaml`: service runtime defaults
+- `docs/openapi.json`: generated OpenAPI schema
+- `.github/workflows/ci.yml`: lint, typecheck, test, smoke-train, and OpenAPI export checks
 
 ## Notes
 
