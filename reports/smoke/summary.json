@@ -1,0 +1,52 @@
+{
+  "ann": {
+    "ann_mrr@1": 0.0,
+    "ann_mrr@5": 0.29166666666666663,
+    "ann_ndcg@1": 0.0,
+    "ann_ndcg@5": 0.4653382855837924,
+    "ann_recall@1": 0.0,
+    "ann_recall@5": 1.0
+  },
+  "latency": {
+    "p50_latency": 6.495900015579537e-05,
+    "p95_latency": 0.00019841700122924522,
+    "startup_p50": 1.5839978004805744e-06,
+    "startup_p95": 1.5839978004805744e-06,
+    "throughput": 554.1444713652988
+  },
+  "package": {
+    "checkpoint_dir": "runs/bitnet_smoke/checkpoints/step-00002",
+    "format": "bitnet-embed-hf-style",
+    "lora": null,
+    "metadata": {
+      "created_at": "2026-03-20T13:02:00.979025+00:00",
+      "experiment_name": "bitnet_smoke",
+      "git_revision": "bcd585b0cd9a8219848e2565501ce9052a4b3c60",
+      "mode": "head_only",
+      "seed": 42
+    },
+    "metrics": {
+      "sts_spearman": 0.19999999999999996
+    },
+    "model": {
+      "backend": "toy",
+      "normalize": true,
+      "pooling": "masked_mean",
+      "projection_dim": 32,
+      "use_last_k_layers": 1
+    },
+    "package_name": "bitnet-smoke-hf"
+  },
+  "report_name": "bitnet-embed-smoke-report",
+  "stage_summary": {
+    "best_stage_by_loss": "stage2_initial_retrieval",
+    "best_stage_loss": 0.13966812193393707,
+    "plan_name": "smoke_stages",
+    "stage_count": 3,
+    "stage_names": [
+      "stage0_smoke",
+      "stage1_head_only_feasibility",
+      "stage2_initial_retrieval"
+    ]
+  }
+}
