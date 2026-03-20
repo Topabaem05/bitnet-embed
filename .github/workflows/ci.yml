@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Sync dependencies
+        run: uv sync --all-groups
+
+      - name: Ruff
+        run: uv run ruff check .
+
+      - name: Mypy
+        run: uv run mypy src scripts tests
+
+      - name: Pytest
+        run: uv run pytest
+
+      - name: Smoke training
+        run: uv run python scripts/train_smoke.py --config configs/train/smoke.yaml
+
+      - name: Export OpenAPI schema
+        run: uv run python scripts/export_openapi.py --config configs/service/api.yaml --output docs/openapi.ci.json
