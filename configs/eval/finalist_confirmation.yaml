@@ -1,0 +1,5 @@
+confirmation_name: smoke-search-finalists
+search_summary: runs/search/smoke_budget/search_summary.json
+output_dir: reports/finalists/smoke
+export_finalist_packages: false
+package_output_root: runs/packages/finalists/smoke
