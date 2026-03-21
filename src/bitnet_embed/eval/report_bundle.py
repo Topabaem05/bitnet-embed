@@ -88,6 +88,16 @@ def build_report_markdown(bundle: dict[str, Any]) -> str:
             for key, value in metrics.items():
                 lines.append(f"  - `{key}`: `{value}`")
         lines.append("")
+    finalist_confirmation = bundle.get("finalist_confirmation", {})
+    if finalist_confirmation:
+        lines.append("## Finalists")
+        lines.append("")
+        lines.append(f"- `confirmation_name`: `{finalist_confirmation.get('confirmation_name')}`")
+        lines.append(f"- `search_name`: `{finalist_confirmation.get('search_name')}`")
+        lines.append(f"- `search_run_id`: `{finalist_confirmation.get('search_run_id')}`")
+        lines.append(f"- `primary_metric`: `{finalist_confirmation.get('primary_metric')}`")
+        lines.append(f"- `finalist_count`: `{finalist_confirmation.get('finalist_count')}`")
+        lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -111,6 +121,9 @@ def run_report_bundle(config_path: str) -> dict[str, Any]:
     package = load_optional_json(
         str(config["package_manifest"]) if config.get("package_manifest") else None
     )
+    finalist_confirmation = load_optional_json(
+        str(config["finalist_confirmation"]) if config.get("finalist_confirmation") else None
+    )
     bundle = {
         "report_name": report_name,
         "stage_summary": summarize_stages(stage_plan),
@@ -120,6 +133,7 @@ def run_report_bundle(config_path: str) -> dict[str, Any]:
         "memory": memory,
         "ann": ann,
         "package": package,
+        "finalist_confirmation": finalist_confirmation,
     }
     dump_json(output_dir / "summary.json", bundle)
     (output_dir / "summary.md").write_text(build_report_markdown(bundle), encoding="utf-8")
