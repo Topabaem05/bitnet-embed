@@ -1,0 +1,67 @@
+experiment_name: bitnet_nq_lora_retrieval
+seed: 42
+
+data:
+  train_sets:
+    - name: tomaarsen/natural-questions-hard-negatives
+      subset: triplet-5
+      format: triplet
+      split: train
+      sample_size: 250000
+      materialization: lazy
+  eval_sets:
+    - name: irds/beir_nfcorpus_dev
+      format: query_document
+      sample_size: 2048
+    - name: irds/beir_fiqa_test
+      format: query_document
+      sample_size: 2048
+    - name: irds/beir_scifact_test
+      format: query_document
+      sample_size: 2048
+
+model:
+  backend: huggingface
+  backbone_name: microsoft/bitnet-b1.58-2B-4T-bf16
+  projection_dim: 768
+  pooling: masked_mean
+  use_last_k_layers: 1
+  normalize: true
+  dtype: bfloat16
+
+lora:
+  enabled: true
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  bias: none
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+tokenization:
+  max_length: 384
+
+training:
+  mode: lora
+  epochs: 1
+  micro_batch_size: 4
+  grad_accum_steps: 8
+  lr: 0.0001
+  weight_decay: 0.01
+  warmup_ratio: 0.08
+  gradient_checkpointing: true
+  bf16: true
+  log_every_steps: 10
+  eval_every_steps: 500
+  save_every_steps: 500
+  run_root: runs
+
+loss:
+  name: triplet
+  margin: 0.2
