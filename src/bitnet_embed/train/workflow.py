@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 from torch.utils.data import DataLoader, IterableDataset
 
@@ -29,6 +29,8 @@ from bitnet_embed.train.factory import build_model, freeze_backbone, unfreeze_al
 from bitnet_embed.train.trainer import EmbeddingTrainer, TrainingConfig, TrainingSummary
 from bitnet_embed.utils.io import load_yaml
 from bitnet_embed.utils.seed import set_seed
+
+_UNSET_RESUME_FROM_CHECKPOINT: Final = object()
 
 
 def load_config(path: str) -> dict[str, Any]:
@@ -165,6 +167,7 @@ def run_training(
     mode_override: str | None = None,
     plan_name: str | None = None,
     parent_run_id: str | None = None,
+    resume_from_checkpoint: str | None | object = _UNSET_RESUME_FROM_CHECKPOINT,
 ) -> TrainingSummary:
     config = load_config(config_path)
     data_config = load_data_config(config)
@@ -175,6 +178,8 @@ def run_training(
         training_config.plan_name = plan_name
     if parent_run_id is not None:
         training_config.parent_run_id = parent_run_id
+    if resume_from_checkpoint is not _UNSET_RESUME_FROM_CHECKPOINT:
+        training_config.resume_from_checkpoint = _optional_string(resume_from_checkpoint)
     set_seed(training_config.seed)
     model = build_model(config.get("model", {}), config.get("lora"))
     if training_config.mode == "head_only":

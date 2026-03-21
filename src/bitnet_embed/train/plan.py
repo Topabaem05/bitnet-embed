@@ -16,6 +16,16 @@ class StageSpec:
     train_config: str
     description: str = ""
     mode_override: str | None = None
+    resume_policy: str = "none"
+
+
+def _resolve_resume_policy(value: Any) -> str:
+    policy = str(value or "none")
+    if policy in {"none", "previous_stage_checkpoint"}:
+        return policy
+    raise RuntimeError(
+        "Unsupported stage resume_policy. Expected one of: none, previous_stage_checkpoint"
+    )
 
 
 def load_stage_specs(payload: dict[str, Any]) -> tuple[str, list[StageSpec], str]:
@@ -27,6 +37,7 @@ def load_stage_specs(payload: dict[str, Any]) -> tuple[str, list[StageSpec], str
             train_config=str(stage["train_config"]),
             description=str(stage.get("description", "")),
             mode_override=(str(stage["mode_override"]) if stage.get("mode_override") else None),
+            resume_policy=_resolve_resume_policy(stage.get("resume_policy", "none")),
         )
         for stage in payload.get("stages", [])
     ]
@@ -41,19 +52,36 @@ def run_stage_plan(config_path: str) -> dict[str, object]:
     plan_run_id = f"{plan_name}-{uuid4().hex[:12]}"
     output_dir = ensure_dir(output_root)
     stage_summaries: list[dict[str, object]] = []
+    previous_stage_checkpoint: str | None = None
     for stage in stages:
+        resume_from_checkpoint: str | None = None
+        resume_handoff = "none"
+        run_kwargs: dict[str, Any] = {}
+        if stage.resume_policy == "previous_stage_checkpoint":
+            resume_from_checkpoint = previous_stage_checkpoint
+            run_kwargs["resume_from_checkpoint"] = resume_from_checkpoint
+            resume_handoff = (
+                "previous_stage_checkpoint"
+                if resume_from_checkpoint is not None
+                else "previous_stage_checkpoint_missing"
+            )
         summary = run_training(
             stage.train_config,
             mode_override=stage.mode_override,
             plan_name=plan_name,
             parent_run_id=plan_run_id,
+            **run_kwargs,
         )
+        previous_stage_checkpoint = summary.checkpoint_dir
         stage_summaries.append(
             {
                 "name": stage.name,
                 "description": stage.description,
                 "train_config": stage.train_config,
                 "mode_override": stage.mode_override,
+                "resume_policy": stage.resume_policy,
+                "resume_handoff": resume_handoff,
+                "resume_from_checkpoint": resume_from_checkpoint,
                 **asdict(summary),
             }
         )
