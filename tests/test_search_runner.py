@@ -170,3 +170,83 @@ def test_run_search_raises_when_primary_metric_missing(
     monkeypatch.setattr("bitnet_embed.train.search.run_training", fake_run_training)
     with pytest.raises(RuntimeError, match="Primary metric"):
         run_search(str(search_config_path))
+
+
+def test_run_search_dispatches_external_executor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base_config_path = tmp_path / "base.yaml"
+    base_config_path.write_text("experiment_name: smoke\ntraining: {}\n", encoding="utf-8")
+    search_config_path = tmp_path / "search.yaml"
+    search_config_path.write_text(
+        "\n".join(
+            [
+                "search_name: external_search",
+                f"base_config: {base_config_path}",
+                "primary_metric: score",
+                "executor: external",
+                "trials:",
+                "  - name: alpha",
+                "rungs:",
+                "  - name: only_rung",
+                "    max_update_steps: 1",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    in_process_calls: list[str] = []
+    external_calls: list[dict[str, Any]] = []
+
+    def fake_run_training(
+        config_path: str,
+        *,
+        mode_override: str | None = None,
+        plan_name: str | None = None,
+        parent_run_id: str | None = None,
+    ) -> TrainingSummary:
+        _ = (mode_override, plan_name, parent_run_id)
+        in_process_calls.append(config_path)
+        return TrainingSummary(
+            run_id="in-process",
+            global_step=1,
+            avg_loss=0.1,
+            throughput=1.0,
+            checkpoint_dir="/checkpoints/in-process",
+            metrics={"score": 0.1},
+        )
+
+    def fake_run_training_external(
+        config_path: str,
+        *,
+        mode_override: str | None = None,
+        plan_name: str | None = None,
+        parent_run_id: str | None = None,
+        resume_from_checkpoint: str | None | object = object(),
+    ) -> TrainingSummary:
+        _ = (mode_override, resume_from_checkpoint)
+        external_calls.append(
+            {
+                "config_path": config_path,
+                "plan_name": plan_name,
+                "parent_run_id": parent_run_id,
+            }
+        )
+        return TrainingSummary(
+            run_id="external",
+            global_step=1,
+            avg_loss=0.1,
+            throughput=1.0,
+            checkpoint_dir="/checkpoints/external",
+            metrics={"score": 0.9},
+        )
+
+    monkeypatch.setattr("bitnet_embed.train.search.run_training", fake_run_training)
+    monkeypatch.setattr(
+        "bitnet_embed.train.search.run_training_external", fake_run_training_external
+    )
+
+    summary = run_search(str(search_config_path))
+    assert summary["executor"] == "external"
+    assert len(external_calls) == 1
+    assert len(in_process_calls) == 0

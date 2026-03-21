@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import yaml
 
+from bitnet_embed.train.external_runner import run_training_external
 from bitnet_embed.train.trainer import TrainingSummary
 from bitnet_embed.train.workflow import run_training
 from bitnet_embed.utils.io import dump_json, ensure_dir, load_yaml
@@ -34,6 +35,7 @@ class SearchSpec:
     output_root: str
     primary_metric: str
     maximize: bool
+    executor: str
     trials: list[TrialSpec]
     rungs: list[RungSpec]
 
@@ -128,12 +130,16 @@ def load_search_spec(config_path: str) -> SearchSpec:
 
     search_name = str(payload.get("search_name", Path(config_path).stem))
     output_root = str(payload.get("output_root", f"runs/search/{search_name}"))
+    executor = str(payload.get("executor", "in_process"))
+    if executor not in {"in_process", "external"}:
+        raise RuntimeError("Search executor must be one of: in_process, external")
     return SearchSpec(
         search_name=search_name,
         base_config=str(base_config),
         output_root=output_root,
         primary_metric=str(primary_metric),
         maximize=bool(payload.get("maximize", False)),
+        executor=executor,
         trials=_load_trials(payload),
         rungs=_load_rungs(payload),
     )
@@ -238,11 +244,18 @@ def run_search(config_path: str) -> dict[str, Any]:
             trial_config_path = configs_dir / f"r{rung_index:02d}_{trial_slug}.yaml"
             _write_yaml(trial_config_path, merged_config)
 
-            training_summary = run_training(
-                str(trial_config_path),
-                plan_name=spec.search_name,
-                parent_run_id=search_run_id,
-            )
+            if spec.executor == "external":
+                training_summary = run_training_external(
+                    str(trial_config_path),
+                    plan_name=spec.search_name,
+                    parent_run_id=search_run_id,
+                )
+            else:
+                training_summary = run_training(
+                    str(trial_config_path),
+                    plan_name=spec.search_name,
+                    parent_run_id=search_run_id,
+                )
             metric_value = _metric_value(training_summary, spec.primary_metric)
             rung_results.append(
                 {
@@ -327,6 +340,7 @@ def run_search(config_path: str) -> dict[str, Any]:
         "base_config": spec.base_config,
         "primary_metric": spec.primary_metric,
         "maximize": spec.maximize,
+        "executor": spec.executor,
         "trial_count": len(spec.trials),
         "rung_count": len(spec.rungs),
         "rungs": rung_summaries,
