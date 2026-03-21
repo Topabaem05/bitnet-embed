@@ -7,8 +7,10 @@ stages:
   - name: stage1_head_only_feasibility
     train_config: configs/train/smoke.yaml
     mode_override: head_only
+    resume_policy: previous_stage_checkpoint
     description: Validate semantic structure in hidden states with the head-only path.
   - name: stage2_initial_retrieval
     train_config: configs/train/smoke_retrieval.yaml
     mode_override: full_ft
+    resume_policy: previous_stage_checkpoint
     description: Transition from semantic similarity to asymmetric retrieval on local smoke triplets.

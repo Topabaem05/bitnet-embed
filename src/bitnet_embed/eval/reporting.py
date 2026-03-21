@@ -21,6 +21,14 @@ def build_stage_plan_markdown(plan_name: str, stage_summaries: Sequence[dict[str
         if isinstance(description, str) and description:
             lines.extend([description, ""])
         lines.append(f"- config: `{summary['train_config']}`")
+        lines.append(f"- resume_policy: `{summary.get('resume_policy', 'none')}`")
+        lines.append(f"- resume_handoff: `{summary.get('resume_handoff', 'none')}`")
+        resume_from_checkpoint = summary.get("resume_from_checkpoint")
+        lines.append(
+            f"- resume_from_checkpoint: `{resume_from_checkpoint}`"
+            if resume_from_checkpoint
+            else "- resume_from_checkpoint: `none`"
+        )
         lines.append(f"- steps: `{summary['global_step']}`")
         lines.append(f"- avg_loss: `{summary['avg_loss']}`")
         lines.append(f"- throughput: `{summary['throughput']}`")
