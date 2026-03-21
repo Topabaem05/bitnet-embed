@@ -1,0 +1,14 @@
+plan_name: nq_stages
+output_root: runs/plans/nq_stages
+stages:
+  - name: stage1_nq_head_only
+    train_config: configs/train/nq_head_only.yaml
+    description: Warm-start the projection head on NQ pairs before switching to hard-negative retrieval.
+  - name: stage2_nq_lora_retrieval
+    train_config: configs/train/nq_lora_retrieval.yaml
+    resume_policy: previous_stage_checkpoint
+    description: Continue from the head-only checkpoint and adapt the backbone with NQ hard negatives plus BEIR-oriented eval sets.
+  - name: stage3_nq_full_ft_retrieval
+    train_config: configs/train/nq_full_ft_retrieval.yaml
+    resume_policy: previous_stage_checkpoint
+    description: Escalate the NQ retrieval run to full fine-tuning once the LoRA stage has stabilized.

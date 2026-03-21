@@ -1,0 +1,35 @@
+search_name: nq_retrieval_budget
+base_config: configs/train/nq_lora_retrieval.yaml
+output_root: runs/search/nq_retrieval_budget
+primary_metric: mrr@10
+maximize: true
+
+trials:
+  - name: lr_1e4_ctx384
+    overrides:
+      training:
+        lr: 0.0001
+        warmup_ratio: 0.08
+      tokenization:
+        max_length: 384
+  - name: lr_8e5_ctx512
+    overrides:
+      training:
+        lr: 0.00008
+        warmup_ratio: 0.1
+      tokenization:
+        max_length: 512
+  - name: lr_5e5_ctx512
+    overrides:
+      training:
+        lr: 0.00005
+        warmup_ratio: 0.06
+      tokenization:
+        max_length: 512
+
+rungs:
+  - name: screen
+    max_update_steps: 500
+    promote_top_k: 2
+  - name: confirm
+    max_update_steps: 2000

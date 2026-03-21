@@ -1,0 +1,35 @@
+search_name: msmarco_retrieval_budget
+base_config: configs/train/msmarco_lora_retrieval.yaml
+output_root: runs/search/msmarco_retrieval_budget
+primary_metric: mrr@10
+maximize: true
+
+trials:
+  - name: lr_8e5_ctx384
+    overrides:
+      training:
+        lr: 0.00008
+        warmup_ratio: 0.08
+      tokenization:
+        max_length: 384
+  - name: lr_6e5_ctx512
+    overrides:
+      training:
+        lr: 0.00006
+        warmup_ratio: 0.1
+      tokenization:
+        max_length: 512
+  - name: lr_4e5_ctx512
+    overrides:
+      training:
+        lr: 0.00004
+        warmup_ratio: 0.06
+      tokenization:
+        max_length: 512
+
+rungs:
+  - name: screen
+    max_update_steps: 500
+    promote_top_k: 2
+  - name: confirm
+    max_update_steps: 2000

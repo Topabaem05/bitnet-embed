@@ -1,0 +1,10 @@
+plan_name: msmarco_stages
+output_root: runs/plans/msmarco_stages
+stages:
+  - name: stage1_msmarco_lora_retrieval
+    train_config: configs/train/msmarco_lora_retrieval.yaml
+    description: Establish a retrieval baseline on MS MARCO triplets with parameter-efficient adaptation.
+  - name: stage2_msmarco_full_ft_retrieval
+    train_config: configs/train/msmarco_full_ft_retrieval.yaml
+    resume_policy: previous_stage_checkpoint
+    description: Promote the strongest MS MARCO checkpoint into a short full fine-tuning confirmation stage with BEIR-oriented eval sets.
