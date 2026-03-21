@@ -6,6 +6,10 @@ from typing import Any
 from uuid import uuid4
 
 from bitnet_embed.eval.reporting import build_stage_plan_markdown
+from bitnet_embed.train.external_runner import (
+    _UNSET_RESUME_FROM_CHECKPOINT,
+    run_training_external,
+)
 from bitnet_embed.train.workflow import run_training
 from bitnet_embed.utils.io import dump_json, ensure_dir, load_yaml
 
@@ -17,6 +21,7 @@ class StageSpec:
     description: str = ""
     mode_override: str | None = None
     resume_policy: str = "none"
+    executor: str = "in_process"
 
 
 def _resolve_resume_policy(value: Any) -> str:
@@ -26,6 +31,13 @@ def _resolve_resume_policy(value: Any) -> str:
     raise RuntimeError(
         "Unsupported stage resume_policy. Expected one of: none, previous_stage_checkpoint"
     )
+
+
+def _resolve_executor(value: Any) -> str:
+    executor = str(value or "in_process")
+    if executor in {"in_process", "external"}:
+        return executor
+    raise RuntimeError("Unsupported stage executor. Expected one of: in_process, external")
 
 
 def load_stage_specs(payload: dict[str, Any]) -> tuple[str, list[StageSpec], str]:
@@ -38,6 +50,7 @@ def load_stage_specs(payload: dict[str, Any]) -> tuple[str, list[StageSpec], str
             description=str(stage.get("description", "")),
             mode_override=(str(stage["mode_override"]) if stage.get("mode_override") else None),
             resume_policy=_resolve_resume_policy(stage.get("resume_policy", "none")),
+            executor=_resolve_executor(stage.get("executor", "in_process")),
         )
         for stage in payload.get("stages", [])
     ]
@@ -65,13 +78,24 @@ def run_stage_plan(config_path: str) -> dict[str, object]:
                 if resume_from_checkpoint is not None
                 else "previous_stage_checkpoint_missing"
             )
-        summary = run_training(
-            stage.train_config,
-            mode_override=stage.mode_override,
-            plan_name=plan_name,
-            parent_run_id=plan_run_id,
-            **run_kwargs,
-        )
+        if stage.executor == "external":
+            summary = run_training_external(
+                stage.train_config,
+                mode_override=stage.mode_override,
+                plan_name=plan_name,
+                parent_run_id=plan_run_id,
+                resume_from_checkpoint=run_kwargs.get(
+                    "resume_from_checkpoint", _UNSET_RESUME_FROM_CHECKPOINT
+                ),
+            )
+        else:
+            summary = run_training(
+                stage.train_config,
+                mode_override=stage.mode_override,
+                plan_name=plan_name,
+                parent_run_id=plan_run_id,
+                **run_kwargs,
+            )
         previous_stage_checkpoint = summary.checkpoint_dir
         stage_summaries.append(
             {
@@ -80,6 +104,7 @@ def run_stage_plan(config_path: str) -> dict[str, object]:
                 "train_config": stage.train_config,
                 "mode_override": stage.mode_override,
                 "resume_policy": stage.resume_policy,
+                "executor": stage.executor,
                 "resume_handoff": resume_handoff,
                 "resume_from_checkpoint": resume_from_checkpoint,
                 **asdict(summary),
