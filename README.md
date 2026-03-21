@@ -34,44 +34,44 @@ uv run python scripts/run_api.py --config configs/service/api.yaml
 ```mermaid
 flowchart LR
     subgraph E[Entrypoints]
-        T1[`scripts/train_*.py`]
-        T2[`scripts/run_stage_plan.py`]
-        T3[`scripts/run_search.py`]
+        T1[scripts/train_*.py]
+        T2[scripts/run_stage_plan.py]
+        T3[scripts/run_search.py]
     end
 
     subgraph C[Configs]
-        C1[`configs/train/*.yaml`]
-        C2[`configs/data/*.yaml`]
-        C3[`configs/plan/*.yaml`]
-        C4[`configs/search/*.yaml`]
+        C1[configs/train/*.yaml]
+        C2[configs/data/*.yaml]
+        C3[configs/plan/*.yaml]
+        C4[configs/search/*.yaml]
     end
 
     subgraph O[Orchestration]
-        O1[`run_training()`\n`src/bitnet_embed/train/workflow.py`]
-        O2[`run_stage_plan()`\n`src/bitnet_embed/train/plan.py`]
-        O3[`run_search()`\n`src/bitnet_embed/train/search.py`]
+        O1[run_training() - src/bitnet_embed/train/workflow.py]
+        O2[run_stage_plan() - src/bitnet_embed/train/plan.py]
+        O3[run_search() - src/bitnet_embed/train/search.py]
     end
 
     subgraph P[Data + Model Path]
-        P1[`data/loaders.py`\nlocal JSONL or HF datasets\neager or lazy materialization]
-        P2[`train/factory.py`\nbuild model + freeze/unfreeze]
-        P3[`train/trainer.py`\ntrainer, eval, checkpoint, resume]
+        P1[data/loaders.py - local JSONL or HF datasets - eager or lazy materialization]
+        P2[train/factory.py - build model plus freeze or unfreeze]
+        P3[train/trainer.py - trainer, eval, checkpoint, resume]
     end
 
     subgraph A[Run Artifacts]
-        A1[`runs/<experiment>/checkpoints/`]
-        A2[`runs/<experiment>/metrics/*.json`]
-        A3[`runs/<experiment>/artifacts/summary.json`]
-        A4[`runs/ledger.jsonl`]
-        A5[`runs/plans/*/plan_summary.{json,md}`]
-        A6[`runs/search/*/search_summary.{json,md}`]
+        A1[runs/EXPERIMENT/checkpoints/]
+        A2[runs/EXPERIMENT/metrics/*.json]
+        A3[runs/EXPERIMENT/artifacts/summary.json]
+        A4[runs/ledger.jsonl]
+        A5[runs/plans/*/plan_summary.json or .md]
+        A6[runs/search/*/search_summary.json or .md]
     end
 
     subgraph D[Downstream Outputs]
-        D1[`scripts/generate_reports.py`\nreport bundle]
-        D2[`scripts/compare_reports.py`\ncomparison reports]
-        D3[`scripts/export_hf_package.py`\npackage export]
-        D4[`src/bitnet_embed/serve/`\ncheckpoint-backed runtime/service]
+        D1[scripts/generate_reports.py - report bundle]
+        D2[scripts/compare_reports.py - comparison reports]
+        D3[scripts/export_hf_package.py - package export]
+        D4[src/bitnet_embed/serve/ - checkpoint-backed runtime or service]
     end
 
     T1 --> C1
