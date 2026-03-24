@@ -56,7 +56,14 @@ def build_training_config(config: dict[str, Any]) -> TrainingConfig:
         weight_decay=float(training.get("weight_decay", 0.0)),
         warmup_ratio=float(training.get("warmup_ratio", 0.1)),
         gradient_checkpointing=bool(training.get("gradient_checkpointing", False)),
-        bf16=bool(training.get("bf16", False)),
+        bf16=bool(
+            training.get("bf16", False)
+            or str(training.get("mixed_precision", "")).lower() == "bf16"
+        ),
+        fp16=bool(
+            training.get("fp16", False)
+            or str(training.get("mixed_precision", "")).lower() == "fp16"
+        ),
         log_every_steps=int(training.get("log_every_steps", 10)),
         eval_every_steps=int(training.get("eval_every_steps", 50)),
         save_every_steps=int(training.get("save_every_steps", 50)),
@@ -65,6 +72,9 @@ def build_training_config(config: dict[str, Any]) -> TrainingConfig:
             if training.get("max_update_steps") is not None
             else None
         ),
+        max_grad_norm=(
+            float(training["max_grad_norm"]) if training.get("max_grad_norm") is not None else 1.0
+        ),
         max_length=int(config.get("tokenization", {}).get("max_length", 64)),
         run_root=str(training.get("run_root", "runs")),
         seed=int(config.get("seed", 42)),
@@ -72,6 +82,7 @@ def build_training_config(config: dict[str, Any]) -> TrainingConfig:
         parent_run_id=_optional_string(training.get("parent_run_id")),
         plan_name=_optional_string(training.get("plan_name")),
         resume_from_checkpoint=_optional_string(training.get("resume_from_checkpoint")),
+        resume_weights_only=bool(training.get("resume_weights_only", False)),
     )
 
 
@@ -161,6 +172,18 @@ def build_eval_fn(data_config: dict[str, Any]) -> Any:
     return evaluate
 
 
+def configure_trainable_parameters(model: Any, mode: str) -> None:
+    if mode == "head_only":
+        freeze_backbone(model)
+        return
+    if mode == "lora":
+        return
+    if mode == "full_ft":
+        unfreeze_all(model)
+        return
+    raise ValueError(f"Unsupported training mode: {mode}")
+
+
 def run_training(
     config_path: str,
     *,
@@ -182,10 +205,7 @@ def run_training(
         training_config.resume_from_checkpoint = _optional_string(resume_from_checkpoint)
     set_seed(training_config.seed)
     model = build_model(config.get("model", {}), config.get("lora"))
-    if training_config.mode == "head_only":
-        freeze_backbone(model)
-    else:
-        unfreeze_all(model)
+    configure_trainable_parameters(model, training_config.mode)
     if model.tokenizer is None:
         raise RuntimeError("Model tokenizer is required for training")
 

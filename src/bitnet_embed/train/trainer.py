@@ -11,7 +11,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from bitnet_embed.train.callbacks import RunMetadata
-from bitnet_embed.train.factory import load_training_checkpoint_state
+from bitnet_embed.train.factory import load_checkpoint_weights, load_training_checkpoint_state
 from bitnet_embed.train.loops import encode_pair_batch, encode_triplet_batch, move_batch_to_device
 from bitnet_embed.train.optim import OptimizerConfig, build_optimizer, build_scheduler
 from bitnet_embed.utils.io import dump_json, ensure_dir, get_git_revision
@@ -30,10 +30,12 @@ class TrainingConfig:
     warmup_ratio: float = 0.1
     gradient_checkpointing: bool = False
     bf16: bool = False
+    fp16: bool = False
     log_every_steps: int = 10
     eval_every_steps: int = 50
     save_every_steps: int = 100
     max_update_steps: int | None = None
+    max_grad_norm: float | None = 1.0
     max_length: int = 256
     run_root: str = "runs"
     seed: int = 42
@@ -42,6 +44,7 @@ class TrainingConfig:
     parent_run_id: str | None = None
     plan_name: str | None = None
     resume_from_checkpoint: str | None = None
+    resume_weights_only: bool = False
 
 
 @dataclass(slots=True)
@@ -59,7 +62,12 @@ def build_accelerator(config: TrainingConfig) -> Any:
         from accelerate import Accelerator
     except ImportError as exc:
         raise RuntimeError("accelerate is required for training") from exc
-    mixed_precision = "bf16" if config.bf16 and torch.cuda.is_available() else "no"
+    mixed_precision = "no"
+    if torch.cuda.is_available():
+        if config.fp16:
+            mixed_precision = "fp16"
+        elif config.bf16:
+            mixed_precision = "bf16"
     return Accelerator(
         gradient_accumulation_steps=config.grad_accum_steps,
         mixed_precision=mixed_precision,
@@ -92,6 +100,30 @@ class EmbeddingTrainer:
             plan_name=config.plan_name,
             resume_from=config.resume_from_checkpoint,
         )
+
+    def _log_progress(self, message: str) -> None:
+        if bool(getattr(self.accelerator, "is_local_main_process", True)):
+            print(message, flush=True)
+
+    def _cuda_device(self) -> torch.device | None:
+        device = getattr(self.accelerator, "device", None)
+        if isinstance(device, torch.device) and device.type == "cuda":
+            return device
+        return None
+
+    def _log_cuda_memory(self) -> None:
+        device = self._cuda_device()
+        if device is None:
+            return
+        torch.cuda.synchronize(device)
+        allocated = torch.cuda.memory_allocated(device) / 1024**3
+        reserved = torch.cuda.memory_reserved(device) / 1024**3
+        peak_allocated = torch.cuda.max_memory_allocated(device) / 1024**3
+        peak_reserved = torch.cuda.max_memory_reserved(device) / 1024**3
+        self._log_progress(f"allocated: {allocated:.2f} GB")
+        self._log_progress(f"reserved: {reserved:.2f} GB")
+        self._log_progress(f"peak allocated: {peak_allocated:.2f} GB")
+        self._log_progress(f"peak reserved: {peak_reserved:.2f} GB")
 
     def _build_run_dir(self) -> Path:
         root = Path(self.config.run_root)
@@ -134,6 +166,9 @@ class EmbeddingTrainer:
             train_dataloader,
             self.scheduler,
         )
+        device = self._cuda_device()
+        if device is not None:
+            torch.cuda.reset_peak_memory_stats(device)
         if self.optimizer is None or self.scheduler is None:
             raise RuntimeError("Optimizer and scheduler must be initialized before training")
         global_step = 0
@@ -143,6 +178,11 @@ class EmbeddingTrainer:
         throughput = ThroughputMeter()
         latest_metrics: dict[str, float] = {}
         checkpoint_dir: str | None = None
+
+        self._log_progress(
+            f"[train] start experiment={self.config.experiment_name} mode={self.config.mode} "
+            f"target_steps={total_steps}"
+        )
 
         for _ in range(self.config.epochs):
             self.model.train()
@@ -168,6 +208,10 @@ class EmbeddingTrainer:
                         raise ValueError(f"Unsupported batch format: {self.config.batch_format}")
                     self.accelerator.backward(loss)
                     if self.accelerator.sync_gradients:
+                        if self.config.max_grad_norm is not None:
+                            self.accelerator.clip_grad_norm_(
+                                self.model.parameters(), self.config.max_grad_norm
+                            )
                         self.optimizer.step()
                         self.scheduler.step()
                         self.optimizer.zero_grad(set_to_none=True)
@@ -179,6 +223,23 @@ class EmbeddingTrainer:
                     continue
 
                 global_step += 1
+
+                should_log_progress = (
+                    global_step == 1
+                    or global_step <= 3
+                    or global_step == total_steps
+                    or global_step % self.config.log_every_steps == 0
+                )
+                if should_log_progress:
+                    percent = (global_step / max(1, total_steps)) * 100.0
+                    self._log_progress(
+                        "[train] progress "
+                        f"step={global_step}/{total_steps} "
+                        f"percent={percent:.1f} "
+                        f"avg_loss={running_loss.value:.6f} "
+                        f"throughput={throughput.per_second:.2f}"
+                    )
+                    self._log_cuda_memory()
 
                 if eval_fn is not None and global_step % self.config.eval_every_steps == 0:
                     latest_metrics = eval_fn(self.accelerator.unwrap_model(self.model))
@@ -216,6 +277,11 @@ class EmbeddingTrainer:
             latest_metrics = eval_fn(self.accelerator.unwrap_model(self.model))
             dump_json(self.run_dir / "metrics" / "final.json", latest_metrics)
 
+        self._log_progress(
+            f"[train] complete experiment={self.config.experiment_name} "
+            f"steps={global_step} checkpoint={checkpoint_dir}"
+        )
+
         return TrainingSummary(
             run_id=self.metadata.run_id,
             global_step=global_step,
@@ -229,6 +295,10 @@ class EmbeddingTrainer:
         if self.optimizer is None or self.scheduler is None:
             raise RuntimeError("Optimizer and scheduler must be initialized before resume")
         checkpoint_state = load_training_checkpoint_state(checkpoint_dir)
+        if self.config.resume_weights_only:
+            load_checkpoint_weights(self.accelerator.unwrap_model(self.model), checkpoint_state)
+            self.optimizer.zero_grad(set_to_none=True)
+            return 0
         self.model.load_state_dict(checkpoint_state.model_state)
         self.optimizer.load_state_dict(checkpoint_state.optimizer_state)
         self.scheduler.load_state_dict(checkpoint_state.scheduler_state)
