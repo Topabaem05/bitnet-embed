@@ -6,7 +6,12 @@ from pathlib import Path
 from torch.utils.data import IterableDataset
 
 from bitnet_embed.data.loaders import IterableExampleDataset
-from bitnet_embed.train.workflow import build_train_dataset, build_training_config, run_training
+from bitnet_embed.train.workflow import (
+    build_train_dataset,
+    build_training_config,
+    configure_trainable_parameters,
+    run_training,
+)
 
 
 def test_build_training_config_reads_max_update_steps() -> None:
@@ -104,3 +109,30 @@ def test_run_training_writes_ledger_entry(tmp_path: Path) -> None:
     assert Path(payload["summary_path"]).exists()
     assert payload["checkpoint_dir"] == summary.checkpoint_dir
     assert payload["metrics"]["global_step"] == summary.global_step
+
+
+def test_configure_trainable_parameters_lora_freezes_backbone_and_keeps_lora() -> None:
+    from unittest.mock import MagicMock
+
+    model = MagicMock()
+    model.parameters.return_value = [MagicMock(), MagicMock()]
+    model.named_parameters.return_value = [("lora_A", MagicMock()), ("base", MagicMock())]
+    model.projection.parameters.return_value = [MagicMock()]
+
+    configure_trainable_parameters(model, "lora")
+
+    model.parameters.assert_called()
+    model.named_parameters.assert_called()
+    model.projection.parameters.assert_called()
+
+
+def test_configure_trainable_parameters_rejects_unknown_mode() -> None:
+    class _DummyModel:
+        pass
+
+    try:
+        configure_trainable_parameters(_DummyModel(), "unknown")
+    except ValueError as exc:
+        assert "Unsupported training mode" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for unknown mode")

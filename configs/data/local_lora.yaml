@@ -1,0 +1,8 @@
+train_sets:
+  - local_path: /mnt/usb/bitnet/retrieval/train_triplets.jsonl
+    format: triplet
+    split: train
+eval_sets:
+  - local_path: /mnt/usb/bitnet/retrieval/eval_query_documents.jsonl
+    format: query_document
+    split: validation

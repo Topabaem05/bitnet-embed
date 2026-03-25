@@ -1,0 +1,8 @@
+train_sets:
+  - local_path: /mnt/usb/bitnet/semantic/train_pairs.jsonl
+    format: pair
+    split: train
+eval_sets:
+  - local_path: /mnt/usb/bitnet/semantic/eval_sts.jsonl
+    format: scored_pair
+    split: validation

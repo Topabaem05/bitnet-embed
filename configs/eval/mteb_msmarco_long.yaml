@@ -1,0 +1,7 @@
+model_name: bitnet-embed-msmarco-long
+revision: step-02000
+output_folder: /mnt/usb/bitnet/runs/mteb/bitnet_msmarco_lora_retrieval_long
+package_dir: null
+checkpoint_dir: /mnt/usb/bitnet/runs/bitnet_msmarco_lora_retrieval_long/checkpoints/step-02000
+tasks:
+  - STSBenchmark

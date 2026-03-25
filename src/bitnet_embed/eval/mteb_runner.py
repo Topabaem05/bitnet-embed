@@ -20,7 +20,8 @@ def run_mteb(
     except ImportError as exc:
         raise RuntimeError("mteb is required to run the MTEB benchmark") from exc
     evaluation_class = mteb_module.MTEB
-    evaluation = evaluation_class(tasks=list(task_names))
+    tasks = mteb_module.get_tasks(tasks=list(task_names))
+    evaluation = evaluation_class(tasks=tasks)
     wrapped_model = (
         model
         if hasattr(model, "mteb_model_meta")

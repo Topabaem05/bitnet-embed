@@ -29,6 +29,8 @@ def main() -> None:
     config = load_yaml(args.config)
 
     device_str = str(config.get("device", "cuda"))
+    import torch
+
     if device_str == "cpu" or not torch.cuda.is_available():
         import os
         import torch._dynamo

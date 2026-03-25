@@ -1,0 +1,18 @@
+plan_name: sdd_long_stages
+output_root: /mnt/usb/bitnet/runs/plans/sdd_long_stages
+stages:
+  - name: stage0_semantic_head_only_long
+    train_config: configs/train/semantic_head_only_long.yaml
+    description: Warm-start the projection head on all-NLI and Quora semantic pair data.
+  - name: stage1_nq_head_only_long
+    train_config: configs/train/nq_head_only_long.yaml
+    resume_policy: previous_stage_checkpoint
+    description: Warm-start the projection head on Natural Questions pair data before retrieval adaptation.
+  - name: stage2_nq_lora_retrieval_long
+    train_config: configs/train/nq_lora_retrieval_long.yaml
+    resume_policy: previous_stage_checkpoint
+    description: Run long NQ hard-negative retrieval adaptation on the BitNet backbone with LoRA.
+  - name: stage3_msmarco_lora_retrieval_long
+    train_config: configs/train/msmarco_lora_retrieval_long.yaml
+    resume_policy: previous_stage_checkpoint
+    description: Continue the long retrieval curriculum on MS MARCO triplets with the same bounded long-run budget.

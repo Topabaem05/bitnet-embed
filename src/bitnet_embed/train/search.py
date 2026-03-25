@@ -337,6 +337,7 @@ def run_search(config_path: str) -> dict[str, Any]:
         "search_name": spec.search_name,
         "search_run_id": search_run_id,
         "config_path": config_path,
+        "output_root": str(output_dir),
         "base_config": spec.base_config,
         "primary_metric": spec.primary_metric,
         "maximize": spec.maximize,

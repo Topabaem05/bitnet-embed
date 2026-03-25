@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-import importlib
 from typing import Any
 
+import numpy as np
 import torch
+from mteb.models.abs_encoder import AbsEncoder
+from mteb.models.model_meta import ModelMeta, ScoringFunction
+from numpy.typing import NDArray
 
 from bitnet_embed.modeling.model import EncodeConfig
 from bitnet_embed.modeling.prompts import TaskType
 
 
-class BitNetMtebWrapper:
+class BitNetMtebWrapper(AbsEncoder):
     def __init__(
         self,
         model: Any,
@@ -20,13 +23,20 @@ class BitNetMtebWrapper:
     ) -> None:
         self.model = model
         self.batch_size = batch_size
-        mteb_module = importlib.import_module("mteb.models.model_meta")
-        model_meta_class = mteb_module.ModelMeta
-        self.mteb_model_meta = model_meta_class.create_empty(
+        projection = getattr(model, "projection", None)
+        projection_network = getattr(projection, "network", None)
+        embed_dim = None
+        if projection_network is not None and len(projection_network) > 0:
+            output_layer = projection_network[-1]
+            embed_dim = getattr(output_layer, "out_features", None)
+        resolved_name = model_name if "/" in model_name else f"custom/{model_name}"
+        self.mteb_model_meta = ModelMeta.create_empty(
             {
-                "name": model_name,
+                "name": resolved_name,
                 "revision": revision,
                 "framework": ["PyTorch"],
+                "embed_dim": embed_dim,
+                "similarity_fn_name": ScoringFunction.COSINE,
             }
         )
 
@@ -39,11 +49,23 @@ class BitNetMtebWrapper:
         hf_subset: str,
         prompt_type: Any = None,
         **kwargs: Any,
-    ) -> torch.Tensor:
-        del task_metadata, hf_split, hf_subset, kwargs
+    ) -> NDArray[np.float32]:
+        del task_metadata, hf_split, hf_subset
         texts = [text for batch in inputs for text in batch["text"]]
-        prompt_value = str(prompt_type).lower() if prompt_type is not None else "document"
-        task: TaskType = "query" if "query" in prompt_value else "document"
-        return torch.as_tensor(
-            self.model.encode(texts, EncodeConfig(batch_size=self.batch_size, task=task))
+        resolved_batch_size = int(kwargs.get("batch_size", self.batch_size))
+        resolved_max_length = int(
+            getattr(self.model, "default_max_length", EncodeConfig().max_length)
         )
+        prompt_value = getattr(prompt_type, "value", prompt_type)
+        normalized_prompt = str(prompt_value).lower() if prompt_value is not None else "document"
+        task: TaskType = "query" if "query" in normalized_prompt else "document"
+        embeddings = self.model.encode(
+            texts,
+            EncodeConfig(
+                batch_size=resolved_batch_size,
+                task=task,
+                normalize=bool(getattr(self.model, "normalize", True)),
+                max_length=resolved_max_length,
+            ),
+        )
+        return torch.as_tensor(embeddings).detach().cpu().float().numpy()

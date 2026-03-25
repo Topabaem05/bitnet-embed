@@ -67,6 +67,11 @@ def run_stage_plan(config_path: str) -> dict[str, object]:
     stage_summaries: list[dict[str, object]] = []
     previous_stage_checkpoint: str | None = None
     for stage in stages:
+        print(
+            f"[plan] stage-start name={stage.name} executor={stage.executor} "
+            f"resume_policy={stage.resume_policy}",
+            flush=True,
+        )
         resume_from_checkpoint: str | None = None
         resume_handoff = "none"
         run_kwargs: dict[str, Any] = {}
@@ -97,6 +102,11 @@ def run_stage_plan(config_path: str) -> dict[str, object]:
                 **run_kwargs,
             )
         previous_stage_checkpoint = summary.checkpoint_dir
+        print(
+            f"[plan] stage-complete name={stage.name} global_step={summary.global_step} "
+            f"checkpoint={summary.checkpoint_dir}",
+            flush=True,
+        )
         stage_summaries.append(
             {
                 "name": stage.name,

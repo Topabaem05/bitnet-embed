@@ -1,0 +1,8 @@
+model_name: bitnet-embed-lora-v2
+revision: step-03125
+output_folder: /mnt/usb/bitnet/runs/mteb/bitnet_lora_v2_msmarco_triplet_cpu
+package_dir: null
+checkpoint_dir: /mnt/usb/bitnet/runs/bitnet_lora_v2_msmarco_triplet/checkpoints/step-03125
+device: cpu
+tasks:
+  - STSBenchmark

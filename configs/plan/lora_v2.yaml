@@ -1,0 +1,10 @@
+plan_name: lora_v2
+output_root: /mnt/usb/bitnet/runs/plans/lora_v2
+stages:
+  - name: nq_pair_lora
+    train_config: configs/train/lora_v2_nq_pair.yaml
+    description: Adapt the BitNet embedder on Natural Questions pair data with LoRA and InfoNCE.
+  - name: msmarco_triplet_lora
+    train_config: configs/train/lora_v2_msmarco_triplet.yaml
+    resume_policy: previous_stage_checkpoint
+    description: Continue the same LoRA model on MS MARCO triplets with triplet loss.

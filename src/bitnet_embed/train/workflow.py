@@ -25,7 +25,7 @@ from bitnet_embed.ledger import RunLedgerEntry, append_run_ledger_entry
 from bitnet_embed.losses.contrastive import SymmetricInfoNCELoss
 from bitnet_embed.losses.triplet import CosineTripletLoss
 from bitnet_embed.modeling.prompts import PromptConfig
-from bitnet_embed.train.factory import build_model, freeze_backbone, unfreeze_all
+from bitnet_embed.train.factory import build_model, freeze_backbone, unfreeze_all, freeze_for_lora
 from bitnet_embed.train.trainer import EmbeddingTrainer, TrainingConfig, TrainingSummary
 from bitnet_embed.utils.io import load_yaml
 from bitnet_embed.utils.seed import set_seed
@@ -75,6 +75,11 @@ def build_training_config(config: dict[str, Any]) -> TrainingConfig:
         max_grad_norm=(
             float(training["max_grad_norm"]) if training.get("max_grad_norm") is not None else 1.0
         ),
+        fail_on_non_finite_loss=bool(training.get("fail_on_non_finite_loss", True)),
+        fail_on_non_finite_grads=bool(training.get("fail_on_non_finite_grads", True)),
+        check_parameters_every_steps=int(training.get("check_parameters_every_steps", 50)),
+        check_eval_outputs_finite=bool(training.get("check_eval_outputs_finite", True)),
+        log_grad_norm=bool(training.get("log_grad_norm", True)),
         max_length=int(config.get("tokenization", {}).get("max_length", 64)),
         run_root=str(training.get("run_root", "runs")),
         seed=int(config.get("seed", 42)),
@@ -177,6 +182,7 @@ def configure_trainable_parameters(model: Any, mode: str) -> None:
         freeze_backbone(model)
         return
     if mode == "lora":
+        freeze_for_lora(model)
         return
     if mode == "full_ft":
         unfreeze_all(model)
@@ -204,7 +210,12 @@ def run_training(
     if resume_from_checkpoint is not _UNSET_RESUME_FROM_CHECKPOINT:
         training_config.resume_from_checkpoint = _optional_string(resume_from_checkpoint)
     set_seed(training_config.seed)
-    model = build_model(config.get("model", {}), config.get("lora"))
+
+    model_config = config.get("model", {})
+    if "gradient_checkpointing" not in model_config:
+        model_config["gradient_checkpointing"] = training_config.gradient_checkpointing
+
+    model = build_model(model_config, config.get("lora"))
     configure_trainable_parameters(model, training_config.mode)
     if model.tokenizer is None:
         raise RuntimeError("Model tokenizer is required for training")
@@ -248,6 +259,17 @@ def run_training(
             eval_fn=eval_fn,
             config_snapshot={**config, "resolved_data": data_config},
         )
+
+        import math
+
+        if not math.isfinite(summary.avg_loss):
+            raise RuntimeError(f"Training failed: avg_loss is not finite ({summary.avg_loss})")
+        if not math.isfinite(summary.throughput):
+            raise RuntimeError(f"Training failed: throughput is not finite ({summary.throughput})")
+        for k, v in summary.metrics.items():
+            if isinstance(v, (int, float)) and not math.isfinite(v):
+                raise RuntimeError(f"Training failed: metric {k} is not finite ({v})")
+
         output_path.write_text(
             json.dumps(
                 summary.metrics
@@ -258,6 +280,7 @@ def run_training(
                 },
                 indent=2,
                 sort_keys=True,
+                allow_nan=False,
             ),
             encoding="utf-8",
         )

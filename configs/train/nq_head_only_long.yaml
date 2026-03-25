@@ -1,0 +1,45 @@
+experiment_name: bitnet_nq_head_only_long
+seed: 42
+
+data:
+  train_sets:
+    - name: sentence-transformers/natural-questions
+      subset: pair
+      format: pair
+      split: train
+      sample_size: 250000
+      materialization: lazy
+
+model:
+  backend: huggingface
+  backbone_name: microsoft/bitnet-b1.58-2B-4T-bf16
+  projection_dim: 768
+  pooling: masked_mean
+  use_last_k_layers: 1
+  normalize: true
+  dtype: bfloat16
+  gradient_checkpointing: true
+
+tokenization:
+  max_length: 128
+
+training:
+  mode: head_only
+  epochs: 1
+  micro_batch_size: 1
+  grad_accum_steps: 1
+  lr: 0.0002
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  resume_weights_only: true
+  gradient_checkpointing: true
+  bf16: true
+  log_every_steps: 10
+  eval_every_steps: 500
+  save_every_steps: 500
+  max_update_steps: 500
+  run_root: /mnt/usb/bitnet/runs
+
+loss:
+  name: symmetric_infonce
+  temperature: 0.05

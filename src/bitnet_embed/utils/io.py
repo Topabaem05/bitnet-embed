@@ -27,7 +27,9 @@ def load_yaml(path: Path | str) -> dict[str, Any]:
 def dump_json(path: Path | str, payload: Any) -> None:
     destination = Path(path)
     ensure_dir(destination.parent)
-    destination.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    destination.write_text(
+        json.dumps(payload, indent=2, sort_keys=True, allow_nan=False), encoding="utf-8"
+    )
 
 
 def load_json(path: Path | str) -> Any:

@@ -2,6 +2,6 @@ model_name: bitnet-embed-smoke
 revision: local
 output_folder: runs/mteb
 package_dir: null
-checkpoint_dir: null
+checkpoint_dir: runs/bitnet_msmarco_lora_retrieval_stable/checkpoints/step-00100
 tasks:
   - STSBenchmark

@@ -63,6 +63,16 @@ class BitNetEmbeddingModel(nn.Module):
         )
         self.tokenizer = _infer_tokenizer(backbone)
 
+    def _project_embeddings(self, embeddings: torch.Tensor) -> torch.Tensor:
+        projection_param = next(self.projection.parameters(), None)
+        if projection_param is not None:
+            embeddings = embeddings.to(
+                device=projection_param.device,
+                dtype=projection_param.dtype,
+            )
+        projected = self.projection(embeddings)
+        return torch.as_tensor(projected)
+
     def forward_features(
         self, input_ids: torch.Tensor, attention_mask: torch.Tensor
     ) -> BackboneFeatures:
@@ -88,7 +98,7 @@ class BitNetEmbeddingModel(nn.Module):
             features.attention_mask,
             mode=self.pooling,
         )
-        sentence_embeddings = self.projection(sentence_embeddings)
+        sentence_embeddings = self._project_embeddings(sentence_embeddings)
         if self.normalize:
             sentence_embeddings = functional.normalize(sentence_embeddings, p=2, dim=-1)
         return sentence_embeddings
@@ -129,7 +139,7 @@ class BitNetEmbeddingModel(nn.Module):
                 features.attention_mask,
                 mode=self.pooling,
             )
-            embeddings = self.projection(embeddings)
+            embeddings = self._project_embeddings(embeddings)
             if encode_config.normalize:
                 embeddings = functional.normalize(embeddings, p=2, dim=-1)
             embeddings = truncate_embeddings(embeddings, encode_config.truncate_dim)

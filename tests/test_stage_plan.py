@@ -42,7 +42,9 @@ def test_run_stage_plan_defaults_to_no_handoff(
         plan_name: str | None = None,
         parent_run_id: str | None = None,
         resume_from_checkpoint: str | None | object = _UNSET,
+        resume_weights_only: bool = False,
     ) -> TrainingSummary:
+        _ = resume_weights_only
         calls.append(
             {
                 "config_path": config_path,
@@ -116,8 +118,9 @@ def test_run_stage_plan_hands_off_previous_stage_checkpoint(
         plan_name: str | None = None,
         parent_run_id: str | None = None,
         resume_from_checkpoint: str | None | object = _UNSET,
+        resume_weights_only: bool = False,
     ) -> TrainingSummary:
-        _ = (mode_override, plan_name, parent_run_id)
+        _ = (mode_override, plan_name, parent_run_id, resume_weights_only)
         stage_index = len(calls)
         calls.append(
             {
@@ -185,8 +188,9 @@ def test_run_stage_plan_dispatches_external_executor(
         plan_name: str | None = None,
         parent_run_id: str | None = None,
         resume_from_checkpoint: str | None | object = _UNSET,
+        resume_weights_only: bool = False,
     ) -> TrainingSummary:
-        _ = mode_override
+        _ = (mode_override, resume_weights_only)
         in_process_calls.append(
             {
                 "config_path": config_path,

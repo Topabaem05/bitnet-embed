@@ -1,0 +1,35 @@
+search_name: autoresearch_msmarco_retrieval
+base_config: configs/train/lora.yaml
+output_root: /mnt/usb/bitnet/runs/search/autoresearch_msmarco_retrieval
+primary_metric: avg_loss
+maximize: false
+
+trials:
+  - name: lr_8e5_ctx128
+    overrides:
+      training:
+        lr: 0.0001
+        warmup_ratio: 0.08
+      tokenization:
+        max_length: 384
+  - name: lr_6e5_ctx256
+    overrides:
+      training:
+        lr: 0.00008
+        warmup_ratio: 0.1
+      tokenization:
+        max_length: 256
+  - name: lr_1e4_ctx384
+    overrides:
+      training:
+        lr: 0.0001
+        warmup_ratio: 0.06
+      tokenization:
+        max_length: 384
+
+rungs:
+  - name: screen
+    max_update_steps: 500
+    promote_top_k: 2
+  - name: confirm
+    max_update_steps: 2000

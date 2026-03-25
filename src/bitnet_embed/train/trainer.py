@@ -14,6 +14,12 @@ from bitnet_embed.train.callbacks import RunMetadata
 from bitnet_embed.train.factory import load_checkpoint_weights, load_training_checkpoint_state
 from bitnet_embed.train.loops import encode_pair_batch, encode_triplet_batch, move_batch_to_device
 from bitnet_embed.train.optim import OptimizerConfig, build_optimizer, build_scheduler
+from bitnet_embed.train.validation import (
+    assert_finite_gradients,
+    assert_finite_loss,
+    assert_finite_parameters,
+    global_grad_norm,
+)
 from bitnet_embed.utils.io import dump_json, ensure_dir, get_git_revision
 from bitnet_embed.utils.metrics import RunningAverage, ThroughputMeter
 
@@ -45,6 +51,11 @@ class TrainingConfig:
     plan_name: str | None = None
     resume_from_checkpoint: str | None = None
     resume_weights_only: bool = False
+    fail_on_non_finite_loss: bool = True
+    fail_on_non_finite_grads: bool = True
+    check_parameters_every_steps: int = 50
+    check_eval_outputs_finite: bool = True
+    log_grad_norm: bool = True
 
 
 @dataclass(slots=True)
@@ -206,15 +217,31 @@ class EmbeddingTrainer:
                         )
                     else:
                         raise ValueError(f"Unsupported batch format: {self.config.batch_format}")
+
+                    if self.config.fail_on_non_finite_loss:
+                        assert_finite_loss(loss, step=global_step + 1)
+
                     self.accelerator.backward(loss)
                     if self.accelerator.sync_gradients:
                         if self.config.max_grad_norm is not None:
                             self.accelerator.clip_grad_norm_(
                                 self.model.parameters(), self.config.max_grad_norm
                             )
+                        if self.config.log_grad_norm:
+                            grad_norm = global_grad_norm(self.model)
+
+                        if self.config.fail_on_non_finite_grads:
+                            assert_finite_gradients(self.model, step=global_step + 1)
+
                         self.optimizer.step()
                         self.scheduler.step()
                         self.optimizer.zero_grad(set_to_none=True)
+
+                        if (
+                            self.config.check_parameters_every_steps > 0
+                            and (global_step + 1) % self.config.check_parameters_every_steps == 0
+                        ):
+                            assert_finite_parameters(self.model, step=global_step + 1)
 
                 running_loss.update(float(loss.detach().item()))
                 throughput.update(anchor_embeddings.size(0), time.perf_counter() - start_time)
